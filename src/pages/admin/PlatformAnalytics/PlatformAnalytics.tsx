@@ -325,7 +325,11 @@ const PlatformAnalytics: React.FC = () => {
                   tick={{ fontSize: 11 }}
                 />
                 <Tooltip
-                  formatter={(value: number) => [`${value}%`, 'Usage']}
+                  formatter={(value) => {
+                    const usage = typeof value === "number" ? value : Number(value ?? 0);
+
+                    return [`${usage}%`, "Usage"];
+                  }}
                 />
                 <Bar
                   dataKey="value"

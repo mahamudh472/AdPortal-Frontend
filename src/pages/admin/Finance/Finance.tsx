@@ -325,8 +325,12 @@ const Finance: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis tickFormatter={(value) => `$${value}`} />
-                <Tooltip 
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'Revenue']}
+                <Tooltip
+                  formatter={(value) => {
+                    const amount = typeof value === "number" ? value : Number(value ?? 0);
+
+                    return [`$${amount.toLocaleString()}`, "Revenue"];
+                  }}
                 />
                 <Line
                   type="monotone"
