@@ -61,7 +61,6 @@ import UpdateStep5Budget from "./pages/update-campaign/UpdateStep5Budget";
 import UpdateStep6Creative from "./pages/update-campaign/UpdateStep6Creative";
 import UpdateStep4Audience from "./pages/update-campaign/UpdateStep4Audience";
 import UpdateStep7Review from "./pages/update-campaign/UpdateStep7Review";
-import Success from "./components/Analytics/Subscriptions/Success";
 import OrganizationManagement from "./pages/admin/Organization/OrganizationManagement";
 import UserNotificationPage from "./Notification/UserNotificationPage";
 import AdminContact from "./pages/Contact/AdminContact";
@@ -92,12 +91,12 @@ export const router = createBrowserRouter([
 
       
             {
-        path: "/accept-invite/:token",
+        path: "accept-invite/:token",
         element: <AcceptInvite />,
       },
      
-            {
-        path: "/meta-auth-callback",
+      {
+        path: "meta-auth-callback",
         element: <MetaAuthCallback />,
       },
       {
@@ -131,7 +130,7 @@ export const router = createBrowserRouter([
   },
 
   {
-    path: "/authentication",
+    path: "/auth",
     children: [
       {
         index: true,
@@ -173,7 +172,7 @@ export const router = createBrowserRouter([
         element: <Navigate to="dashboard" replace />,
       },
       {
-        path: "/dashboard",
+        path: "dashboard",
         element: <UserDashboard />,
       },
       {
@@ -182,45 +181,45 @@ export const router = createBrowserRouter([
 
       },
       {
-        path: "/campaigns",
+        path: "campaigns",
         element: <Campaigns />,
       },
       {
-        path: "/campaigns-view-details/:id",
+        path: "campaigns-view-details/:id",
         element: <CampaignsViewDetails />,
       },
       {
-        path: "/ai-tools",
+        path: "ai-tools",
         element: <AiTools />,
       },
       {
-        path: "/analytics",
+        path: "analytics",
         element: <Analytics />,
       },
       {
-        path: "/reports",
+        path: "reports",
         element: <Reports />,
       },
       {
-        path: "/subscriptions",
+        path: "subscriptions",
         element: <Subscriptions />,
       },
       {
-        path: "/team",
+        path: "team",
         element: <Team />,
       },
       {
-        path: "/settings",
+        path: "settings",
         element: <Settings />,
       },
       {
-        path: "/notifications",
+        path: "notifications",
         element: <UserNotificationPage />,
       },
 
 
       {
-        path: "/campaigns-create",
+        path: "campaigns-create",
         element: <CreateCampaignLayout />,
         children: [
           {
@@ -228,71 +227,71 @@ export const router = createBrowserRouter([
             element: <Navigate to="step-1" replace />,
           },
           {
-            path: "/step-1",
-            element: <Step1CampaignNameData />,
+            path: "step-1",
+            element: <Step1CampaignName />,
           },
           {
-            path: "/step-2",
-            element: <Step2Platform />,
+            path: "step-2",
+            element: <Step2Platforms />,
           },
           {
-            path: "/step-3",
-            element: <Step3ObjectiveData />,
+            path: "step-3",
+            element: <Step3Objective />,
           },
           {
-            path: "/step-4",
-            element: <Step4AudienceData />,
+            path: "step-4",
+            element: <Step4Audience />,
           },
           {
             path: "step-5",
-            element: <Step5BudgetData />,
+            element: <Step5Budget />,
           },
           {
-            path: "/step-6",
-            element: <Step6CreativeData />,
+            path: "step-6",
+            element: <Step6Creative />,
           },
           {
-            path: "/step-7",
-            element: <Step7ReviewData />,
+            path: "step-7",
+            element: <Step7Review />
           },
         ],
       },
 
 
-         {
-        path: "/campaigns-update/:id",
+      {
+        path: "campaigns-update/:id",
         element: <UpdateCampaignLayout />,
         children: [
           {
             index: true,
-            element: <Navigate to="/update-step-1" replace />,
+            element: <Navigate to="update-step-1" replace />,
           },
           {
-            path: "/update-step-1",
+            path: "update-step-1",
             element: <UpdateStep1CampaignName />,
           },
           {
-            path: "/update-step-2",
+            path: "update-step-2",
             element: <UpdateStep2Platforms />,
           },
           {
-            path: "/update-step-3",
+            path: "update-step-3",
             element: <UpdateStep3Objective />,
           },
           {
-            path: "/update-step-4",
+            path: "update-step-4",
             element: <UpdateStep4Audience />,
           },
           {
-            path: "/update-step-5",
+            path: "update-step-5",
             element: <UpdateStep5Budget />,
           },
           {
-            path: "/update-step-6",
-            element: <UpdateStep6CreativeData />,
+            path: "update-step-6",
+            element: <UpdateStep6Creative />,
           },
           {
-            path: "/update-step-7",
+            path: "update-step-7",
             element: <UpdateStep7Review />,
           },
         ],
