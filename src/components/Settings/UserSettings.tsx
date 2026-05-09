@@ -1,6 +1,7 @@
 
 
-import React, { useState } from "react";
+import React from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   User,
   Building2,
@@ -24,7 +25,21 @@ type SettingsTab =
   | "security";
 
 const Settings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
+  const activeTab: SettingsTab = (
+    ["profile", "business", "platforms", "notifications", "security"].includes(tabParam as string)
+      ? tabParam
+      : "profile"
+  ) as SettingsTab;
+
+  const setActiveTab = (tab: SettingsTab) => {
+    setSearchParams((prev) => {
+      prev.set("tab", tab);
+      return prev;
+    });
+  };
 
   return (
     <div className="space-y-6 mt-5">

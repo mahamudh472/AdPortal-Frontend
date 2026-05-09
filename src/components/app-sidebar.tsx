@@ -594,6 +594,7 @@ export function AppSidebar() {
               <AccountDropdown
                 first_name={user?.first_name || ""}
                 email={user?.email || ""}
+                avatar={user?.avatar}
                 organizations={organizations}
                 selectedOrganization={parsedSelectedOrganization}
               />

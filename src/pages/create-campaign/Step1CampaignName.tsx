@@ -47,16 +47,23 @@ const Step1CampaignName: React.FC = () => {
 
       console.log("Success:", response.data);
 
-     
-      localStorage.setItem("campaignId", response.data.campaign_id.toString());
-      localStorage.setItem("campaignStatus", response.data.status);
-      localStorage.setItem("campaignName", response.data.campaign_name);
+      // Handle both campaign_id and id from backend
+      const id = response.data.campaign_id || response.data.id;
+      const status = response.data.status || "DRAFT";
+      const name = response.data.campaign_name || response.data.name || campaignName;
 
-
-      navigate("/user-dashboard/campaigns-create/step-2");
+      if (id) {
+        localStorage.setItem("campaignId", id.toString());
+        localStorage.setItem("campaignStatus", status);
+        localStorage.setItem("campaignName", name);
+        navigate("/user-dashboard/campaigns-create/step-2");
+      } else {
+        console.error("No campaign ID returned from backend:", response.data);
+        setError("Failed to create campaign: No ID returned");
+      }
 
     } catch (err: any) {
-      setError(err.response?.data?.message || "Something went wrong");
+      setError(err.response?.data?.message || err.message || "Something went wrong");
       console.error("Error:", err);
     } finally {
       setLoading(false);

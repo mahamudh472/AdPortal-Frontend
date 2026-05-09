@@ -9,6 +9,7 @@ interface Organization {
 interface AccountDropdownProps {
   first_name: string;
   email: string;
+  avatar?: string | null;
   organizations: any[];
   selectedOrganization: Organization | null;
 }
@@ -16,9 +17,11 @@ interface AccountDropdownProps {
 export default function AccountDropdown({
   first_name,
   email,
+  avatar,
   organizations: rawOrganizations,
   selectedOrganization: propSelectedOrganization,
 }: AccountDropdownProps) {
+  const DEFAULT_AVATAR = "https://res.cloudinary.com/dqkczdjjs/image/upload/v1773093792/avatar-profile-icon-in-flat-style-male-user-profile-illustration-on-isolated-background-man-profile-sign-business-concept-vector_ufimxp.jpg";
   const [open, setOpen] = useState(false);
   const [localSelectedOrganization, setLocalSelectedOrganization] = useState<Organization | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -233,9 +236,9 @@ export default function AccountDropdown({
       >
         <div className="flex items-center gap-2">
           <img
-            src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1773093792/avatar-profile-icon-in-flat-style-male-user-profile-illustration-on-isolated-background-man-profile-sign-business-concept-vector_ufimxp.jpg"
+            src={avatar || DEFAULT_AVATAR}
             alt="user"
-            className="h-5 w-5 rounded-full"
+            className="h-5 w-5 rounded-full object-cover"
           />
           <div className="text-left">
             <div className="text-xs  font-medium text-gray-900 line-clamp-1">
@@ -313,8 +316,8 @@ export default function AccountDropdown({
               <div className="border-b border-gray-100 p-2 bg-gray-50 rounded-t-xl">
             <div className="flex items-center gap-2">
               <img
-                src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1773093792/avatar-profile-icon-in-flat-style-male-user-profile-illustration-on-isolated-background-man-profile-sign-business-concept-vector_ufimxp.jpg"
-                className="h-6 w-6 rounded-full"
+                src={avatar || DEFAULT_AVATAR}
+                className="h-6 w-6 rounded-full object-cover"
                 alt="User"
               />
               <div className="flex-1 min-w-0">

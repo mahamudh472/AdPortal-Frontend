@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Check } from "lucide-react";
+import { Check, AlertCircle, Settings } from "lucide-react";
 import { useNavigate, Link, useParams } from "react-router";
 import type { PlatformItem, PlatformKey } from "@/types/createCampaignStep1";
 import api from "@/lib/axios";
@@ -49,6 +49,7 @@ const Step2Platforms: React.FC = () => {
   const [error, setError] = useState("");
   const [campaignData, setCampaignData] = useState<{ id: number; status: string; platforms: string[] } | null>(null);
   const [integrationStatus, setIntegrationStatus] = useState<Record<string, boolean>>({});
+  const hasAnyConnectedPlatform = Object.values(integrationStatus).some(status => status === true);
   
   const campaignId = id || localStorage.getItem("campaignId");
 
@@ -235,6 +236,26 @@ const Step2Platforms: React.FC = () => {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
           <p className="text-sm text-red-600 font-medium">{error}</p>
+        </div>
+      )}
+
+      {/* No Connections Warning */}
+      {!fetchLoading && !hasAnyConnectedPlatform && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 flex flex-col items-center text-center animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+            <AlertCircle className="text-amber-600" size={24} />
+          </div>
+          <h3 className="text-amber-900 font-semibold">No Ad Accounts Connected</h3>
+          <p className="text-amber-700 text-sm mt-1 max-w-sm">
+            You need to connect your Meta, Google, or TikTok ad accounts in settings before you can update platforms and run campaigns.
+          </p>
+          <Link 
+            to="/user-dashboard/settings" 
+            className="mt-4 flex items-center gap-2 bg-amber-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition shadow-sm"
+          >
+            <Settings size={16} />
+            Go to Settings
+          </Link>
         </div>
       )}
 

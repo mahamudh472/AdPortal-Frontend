@@ -172,7 +172,7 @@ const AiTools: React.FC = () => {
       // Map UI copy_type to API copy_type
       const copyTypeMap: Record<CopyType, string> = {
         "headlines": "Headlines",
-        "primary": "Primary",
+        "primary": "Primary Text",
         "descriptions": "Descriptions",
         "ctas": "CTAs"
       };
@@ -347,7 +347,7 @@ const AiTools: React.FC = () => {
                       : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
                   }`}
                 >
-                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                  {t === "primary" ? "Primary Text" : t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>
               ))}
             </div>
