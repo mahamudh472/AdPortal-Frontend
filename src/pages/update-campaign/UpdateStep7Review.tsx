@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle, AlertTriangle } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { Link, useParams, useNavigate } from "react-router";
 import api from "@/lib/axios";
 
 interface AdItem {
@@ -63,6 +63,8 @@ const Step7Review: React.FC = () => {
   const [campaignData, setCampaignData] = useState<CampaignResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCampaign = async () => {
@@ -88,6 +90,25 @@ const Step7Review: React.FC = () => {
     if (!dateString) return "—";
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  const handlePublish = () => {
+    setPublishing(true);
+    
+    // Simulate publishing process
+    setTimeout(() => {
+      // Clear all campaign-related data from localStorage
+      localStorage.removeItem("campaign_builder_data");
+      localStorage.removeItem("campaignId");
+      localStorage.removeItem("campaignName");
+      localStorage.removeItem("campaignStatus");
+      localStorage.removeItem("api_response");
+      
+      console.log("🧹 All campaign data cleared from localStorage");
+      
+      // Navigate to campaigns page
+      navigate("/user-dashboard/campaigns");
+    }, 1500);
   };
 
   const formatCurrency = (amount: number) => {
@@ -294,12 +315,29 @@ const Step7Review: React.FC = () => {
           >
             Previous
           </Link>
-          <Link
-            to={`/user-dashboard/campaigns-view-details/${id}`}
-            className="btn md:w-40 text-white bg-blue-600 hover:bg-blue-700 rounded-xl border py-2 text-center"
-          >
-            Go to Campaigns
-          </Link>
+          {campaignData.status?.toUpperCase() === "DRAFT" ? (
+            <button
+              onClick={handlePublish}
+              disabled={publishing}
+              className="btn md:w-40 text-white bg-blue-600 hover:bg-blue-700 rounded-xl border py-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {publishing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Publishing...
+                </>
+              ) : (
+                "Publish Campaign"
+              )}
+            </button>
+          ) : (
+            <Link
+              to={`/user-dashboard/campaigns-view-details/${id}`}
+              className="btn md:w-40 text-white bg-blue-600 hover:bg-blue-700 rounded-xl border py-2 text-center"
+            >
+              Go to Campaigns
+            </Link>
+          )}
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import AICampaignOptimization from "./AICampaignOptimization";
 import AudienceAndPlacements from "./AudienceAndPlacements";
 import CampaignsOverview from "./CampaignsOverview";
 import CreativePerformance from "./CreativePerformance";
+import PlatformSyncStatus from "./PlatformSyncStatus";
 
 
 import { useEffect, useState } from "react";
@@ -77,6 +78,7 @@ const CampaignsViewDetails = () => {
             <div className="mt-5">
                 <AICampaignOptimization campaign={campaign} />
             </div>
+            <PlatformSyncStatus syncStatuses={campaign.platform_sync_statuses} />
         </div>
     );
 };

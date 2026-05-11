@@ -112,7 +112,7 @@
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import api from "@/lib/axios";
 
 const publishableKey =
@@ -127,6 +127,7 @@ type CheckoutResponse = {
     clientSecret?: string;
     client_secret?: string;
     checkout_session_id?: string;
+    message?: string;
 };
 
 type RouteState = {
@@ -150,6 +151,7 @@ const getOrgId = (): string => {
 const Payment = () => {
     const [searchParams] = useSearchParams();
     const location = useLocation();
+    const navigate = useNavigate();
     const routeState = (location.state as RouteState | null) ?? null;
 
     const planId = routeState?.planId?.toString() || searchParams.get("plan_id") || "";
@@ -157,6 +159,7 @@ const Payment = () => {
     const org_id = useMemo(() => getOrgId(), []);
 
     const [clientSecret, setClientSecret] = useState<string | null>(null);
+    const [backendMessage, setBackendMessage] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -190,6 +193,12 @@ const Payment = () => {
                         plan_key: planKey,
                     }
                 );
+
+                if (response.data.message) {
+                    setBackendMessage(response.data.message);
+                    setLoading(false);
+                    return;
+                }
 
                 const secret = response.data.clientSecret || response.data.client_secret;
                 if (!secret) {
@@ -249,7 +258,27 @@ const Payment = () => {
                         </div>
                     )}
 
-                    {publishableKey && clientSecret && !error && stripePromise && (
+                    {backendMessage && (
+                        <div className="rounded-lg border border-blue-200 bg-blue-50 p-6 text-center">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 mb-4">
+                                <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-blue-900 mb-2">Subscription Update</h3>
+                            <p className="text-sm text-blue-700 leading-relaxed">
+                                {backendMessage}
+                            </p>
+                            <button 
+                                onClick={() => navigate('/user-dashboard/subscriptions')}
+                                className="mt-6 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+                            >
+                                Back to Subscriptions
+                            </button>
+                        </div>
+                    )}
+
+                    {publishableKey && clientSecret && !error && !backendMessage && stripePromise && (
                         <EmbeddedCheckoutProvider
                             stripe={stripePromise}
                             options={{ fetchClientSecret }}

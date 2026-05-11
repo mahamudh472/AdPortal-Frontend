@@ -280,30 +280,26 @@ const Reports: React.FC = () => {
     }
   };
 
-  const handleDownload = async (fileUrl: string, fileName: string): Promise<void> => {
+  const handleDownload = (fileUrl: string, fileName: string): void => {
     try {
-      const response = await fetch(fileUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to download file');
-      }
-      
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      // Create a temporary link element
       const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = fileName || 'report.xlsx';
+      link.href = fileUrl;
+      
+      // The download attribute helps suggest a filename, though it may be ignored
+      // by some browsers for cross-origin URLs.
+      link.setAttribute('download', fileName);
+      
+      // Open in a new tab to ensure the current page isn't navigated away
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+      
+      // Append to the document, click it, and remove it
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
       
-      toast.success("Report downloaded successfully!");
+      toast.success("Download started!");
     } catch (error) {
       console.error("Error downloading report:", error);
       toast.error("Failed to download report");
@@ -432,7 +428,7 @@ const Reports: React.FC = () => {
                   className="rounded-md cursor-pointer border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-1"
                 >
                   <Download size={12} />
-                  Download PDF
+                  Download
                 </button>
               </div>
             ))}

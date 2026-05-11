@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { Link } from "react-router";
 
 type AdMatrics = {
   impressions: number;
@@ -20,6 +21,12 @@ type Ad = {
   call_to_action: string;
   destination_url: string;
   file_url?: string; // Add file_url field
+  assets?: Array<{
+    id: number;
+    file_url: string;
+    file_type: string;
+    status: string;
+  }>;
   matrics?: AdMatrics;
   type?: "Image" | "Video"; // We'll derive this from file_url
 };
@@ -169,8 +176,8 @@ const CreativePerformance: React.FC<CreativePerformanceProps> = ({ campaign }) =
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {campaign.ads && campaign.ads.length > 0 ? (
           campaign.ads.map((item) => {
-            // Use ad-level file_url first, fallback to campaign-level file_url
-            const fileUrl = item.file_url || campaign.file_url;
+            // Use ad-level file_url, fallback to first asset's file_url, then campaign-level file_url
+            const fileUrl = item.file_url || (item.assets && item.assets.length > 0 ? item.assets[0].file_url : null) || campaign.file_url;
             const mediaType = getMediaType(fileUrl);
             const fileName = getFileName(fileUrl);
 
@@ -210,9 +217,20 @@ const CreativePerformance: React.FC<CreativePerformanceProps> = ({ campaign }) =
 
                 {/* Content */}
                 <div className="space-y-1">
-                  <h3 className="text-sm font-semibold text-slate-900 line-clamp-2">
-                    {item.headline || item.ad_name}
-                  </h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900 line-clamp-2 flex-1">
+                      {item.headline || item.ad_name}
+                    </h3>
+                    <Link 
+                      to={`/user-dashboard/campaigns-update/${campaign.id}`}
+                      className="text-slate-400 hover:text-blue-600 transition-colors"
+                      title="Edit Ad"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </Link>
+                  </div>
                   <p className="text-xs text-slate-500 line-clamp-2">
                     {item.primary_text || item.description || ""}
                   </p>

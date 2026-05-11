@@ -3,11 +3,12 @@ import NotificationBell from "@/Notification/NotificationBell";
 
 
 const AdminNavbar = () => {
-    const { full_name, is_admin } = useUserProfile();
+    const { full_name, is_admin, avatar } = useUserProfile();
+    const DEFAULT_AVATAR = "https://res.cloudinary.com/dqkczdjjs/image/upload/v1773093792/avatar-profile-icon-in-flat-style-male-user-profile-illustration-on-isolated-background-man-profile-sign-business-concept-vector_ufimxp.jpg";
 
     return (
         <div>
-            <div className="navbar bg-base-100 border-b-2">
+            <div className="navbar bg-base-100 border-b-2 px-4">
                 <div className="navbar-start">
                     <div className="dropdown"></div>
                 </div>
@@ -19,18 +20,19 @@ const AdminNavbar = () => {
                         
                          <div className="lg:flex hidden"><NotificationBell /></div>
                         
-                        {/* <Link to="notification">
-                            <img 
-                                className='w-10 h-10 rounded-full' 
-                                src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766353699/Button_3_jqwyyc.png" 
-                                alt="notification" 
-                            />
-                        </Link> */}
-                        
-                        <div className='flex flex-col  pr-3 pl-3 rounded-xl'>
-                            <p className='text-xl whitespace-nowrap font-semibold'>{full_name}</p>
-                            <p className='text-gray-900 '>{is_admin ? 'Admin' : 'User'}</p>
+                        <div className='flex flex-col text-right  pr-3 pl-3 rounded-xl'>
+                            <p className='text-sm whitespace-nowrap font-semibold'>{full_name}</p>
+                            <p className='text-xs text-gray-500 '>{is_admin ? 'Admin' : 'User'}</p>
                         </div>
+
+                        <div className="h-10 w-10 rounded-full overflow-hidden border border-slate-200">
+                            <img 
+                                src={avatar || DEFAULT_AVATAR} 
+                                alt="profile" 
+                                className="h-full w-full object-cover"
+                            />
+                        </div>
+
                         <div className=" pr-2 lg:hidden ">
                            <NotificationBell />
                         </div>

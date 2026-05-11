@@ -387,7 +387,7 @@
 
 
 import React, { useState, useEffect } from "react";
-import { Check, FileText } from "lucide-react";
+import { Check, FileText, Info } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import api from "../../../lib/axios";
@@ -426,6 +426,7 @@ const SubscriptionBilling: React.FC = () => {
   const navigate = useNavigate();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [activePlan, setActivePlan] = useState<PlanKey | "">("");
+  const [subscriptionInfo, setSubscriptionInfo] = useState<string | null>(null);
   useEffect(() => {
     fetchCurrentPlan();
   }, []);
@@ -437,6 +438,9 @@ const SubscriptionBilling: React.FC = () => {
       const response = await api.get(`/finance/get-current-plan/?org_id=${org_id}`);
       if (response.data && response.data.plan_name) {
         setActivePlan(response.data.plan_name);
+      }
+      if (response.data && response.data.info) {
+        setSubscriptionInfo(response.data.info);
       }
     } catch (error) {
       const axErr = error as { response?: { status?: number; data?: { error?: string } } };
@@ -605,6 +609,19 @@ const SubscriptionBilling: React.FC = () => {
           Manage your subscription plan and billing information
         </p>
       </div>
+
+      {subscriptionInfo && (
+        <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-blue-800">
+          <div className="mt-0.5">
+            <Info size={18} className="text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium leading-relaxed">
+              {subscriptionInfo}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div>
         <h2 className="font-semibold text-slate-900 mb-4">

@@ -8,6 +8,7 @@ export interface UserProfileData {
   email: string;
   phone_number: string;
   is_admin: boolean;
+  avatar: string | null;
 }
 
 export const useUserProfile = () => {
@@ -43,5 +44,6 @@ export const useUserProfile = () => {
     email: user?.email,
     phone: user?.phone_number,
     is_admin: user?.is_admin,
+    avatar: user?.avatar,
   };
 };
