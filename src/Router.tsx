@@ -54,6 +54,8 @@ import ContactUs from "./pages/Contact/ContactUs";
 import AcceptInvite from "./components/Team/AcceptInvite";
 import UpdateCampaignLayout from "./pages/update-campaign/UpdateCampaignLayout";
 import MetaAuthCallback from "./components/Settings/MetaAuthCallback";
+import GoogleAuthCallback from "./components/Settings/GoogleAuthCallback";
+import TiktokAuthCallback from "./components/Settings/TiktokAuthCallback";
 import UpdateStep1CampaignName from "./pages/update-campaign/UpdateStep1CampaignName";
 import UpdateStep2Platforms from "./pages/update-campaign/UpdateStep2Platforms";
 import UpdateStep3Objective from "./pages/update-campaign/UpdateStep3Objective";
@@ -98,6 +100,14 @@ export const router = createBrowserRouter([
       {
         path: "meta-auth-callback",
         element: <MetaAuthCallback />,
+      },
+      {
+        path: "google-auth-callback",
+        element: <GoogleAuthCallback />,
+      },
+      {
+        path: "tiktok-auth-callback",
+        element: <TiktokAuthCallback />,
       },
       {
         path: "features",
