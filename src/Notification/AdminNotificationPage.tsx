@@ -14,6 +14,7 @@ import {
   selectNotificationsPagination
 } from "../features/auth/Context/notificationsSlice";
 import { Bell, CheckCheck, Trash2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { parseUTCDate } from "../lib/dateUtils";
 
 const AdminNotificationPage: React.FC = () => {
   const dispatch = useDispatch();
@@ -47,7 +48,8 @@ const AdminNotificationPage: React.FC = () => {
   const fmtDate = (iso?: string) => {
     if (!iso) return "";
     try {
-      const date = new Date(iso);
+      const date = parseUTCDate(iso);
+      if (!date) return "";
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / 60000);

@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect } from "react";
+import { formatToLocalDate } from "@/lib/dateUtils";
 import {
   Plus,
   Search,
@@ -212,7 +213,9 @@ const Campaigns: React.FC = () => {
           icon: "error",
           title: "Error!",
           text:
+            err.response?.data?.error ||
             err.response?.data?.message ||
+            err.response?.data?.detail ||
             "Failed to delete campaign. Please try again.",
           confirmButtonColor: "#3085d6",
         });
@@ -358,7 +361,9 @@ const Campaigns: React.FC = () => {
                   icon: "error",
                   title: "Sync Failed",
                   text:
+                    err.response?.data?.error ||
                     err.response?.data?.message ||
+                    err.response?.data?.detail ||
                     "Failed to sync ads. Please try again.",
                   confirmButtonColor: "#3085d6",
                 });
@@ -616,7 +621,10 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
       console.error("Error toggling campaign status:", err);
       setOptimisticStatus(prevStatus); // revert on failure
       toast.error(
-        err.response?.data?.message || "Failed to toggle campaign status."
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.response?.data?.detail ||
+        "Failed to toggle campaign status."
       );
     } finally {
       setToggling(false);
@@ -702,7 +710,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
       </div>
 
       <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
-        <span>{new Date(campaign.created_at).toLocaleDateString()}</span>
+        <span>{formatToLocalDate(campaign.created_at)}</span>
         <Link
           to={`/user-dashboard/campaigns-view-details/${campaign.id}`}
           className="text-blue-600 hover:underline"

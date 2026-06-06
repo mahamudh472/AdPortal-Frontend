@@ -19,6 +19,7 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import api from "../../../lib/axios";
+import { formatToLocalDate } from "@/lib/dateUtils";
 
 import type {
   FinanceDashboardData,
@@ -77,12 +78,7 @@ const getMonthAbbreviation = (month: string): string => {
 
 // Helper function to format date
 const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatToLocalDate(dateString);
 };
 
 // Helper function to get status badge color

@@ -15,6 +15,7 @@ import {
 
 import { toast } from 'sonner';
 import api from '@/lib/axios';
+import { formatToLocalDate, formatToLocalDateTime } from '@/lib/dateUtils';
 
 // Type definitions
 interface Contact {
@@ -63,8 +64,8 @@ const AdminContact: React.FC = () => {
       setError(null);
     } catch (err) {
       console.error('Error fetching contacts:', err);
-      setError('Failed to load contacts. Please try again.');
-      toast.error('Failed to load contacts', {
+      setError('Failed to load contact messages. Please try again.');
+      toast.error('Failed to load contact messages', {
         duration: 4000,
         position: 'top-center',
       });
@@ -147,7 +148,7 @@ const AdminContact: React.FC = () => {
       
     } catch (err) {
       console.error('Error deleting contact:', err);
-      toast.error('Failed to delete contact. Please try again.', {
+      toast.error('Failed to delete message. Please try again.', {
         duration: 4000,
         position: 'top-center',
       });
@@ -158,28 +159,20 @@ const AdminContact: React.FC = () => {
 
   // Format date
   const formatDate = (dateString: string): string => {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+    return formatToLocalDate(dateString);
   };
 
   // Format datetime for modal
   const formatDateTime = (dateString: string): string => {
-    const options: Intl.DateTimeFormatOptions = { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+    return formatToLocalDateTime(dateString);
   };
 
   return (
     <div className="min-h-screen  p-2">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="lg:text-3xl text-2xl font-bold text-gray-800 mb-2">Contact Management</h1>
-        <p className="text-gray-600">Manage and view all contact form submissions</p>
+        <h1 className="lg:text-3xl text-2xl font-bold text-gray-800 mb-2">Contact Messages</h1>
+        <p className="text-gray-600">View and manage messages submitted via the public contact form</p>
       </div>
 
       {/* Search Bar */}
@@ -188,7 +181,7 @@ const AdminContact: React.FC = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search by name, email, or subject..."
+            placeholder="Search messages by name, email, or subject..."
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={searchTerm}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
@@ -201,7 +194,7 @@ const AdminContact: React.FC = () => {
         <div className="bg-white rounded-xl border overflow-hidden p-12">
           <div className="flex flex-col items-center justify-center">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
-            <p className="mt-4 text-gray-600">Loading contacts...</p>
+            <p className="mt-4 text-gray-600">Loading contact messages...</p>
           </div>
         </div>
       )}
@@ -211,7 +204,7 @@ const AdminContact: React.FC = () => {
         <div className="bg-white rounded-xl border overflow-hidden p-12">
           <div className="flex flex-col items-center justify-center">
             <AlertTriangle className="w-16 h-16 text-red-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-700 mb-2">Error Loading Contacts</h3>
+            <h3 className="text-lg font-medium text-gray-700 mb-2">Error Loading Messages</h3>
             <p className="text-gray-500 mb-4">{error}</p>
             <button
               onClick={() => fetchContacts(currentPage, debouncedSearch)}
@@ -300,7 +293,7 @@ const AdminContact: React.FC = () => {
           {contacts.length === 0 && (
             <div className="text-center py-12">
               <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-700 mb-2">No contacts found</h3>
+              <h3 className="text-lg font-medium text-gray-700 mb-2">No messages found</h3>
               <p className="text-gray-500">Try adjusting your search or filter to find what you're looking for.</p>
             </div>
           )}
@@ -349,7 +342,7 @@ const AdminContact: React.FC = () => {
           <div className="bg-white bg- rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
             {/* Modal Header */}
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-gray-800">Contact Details</h2>
+              <h2 className="text-xl font-bold text-gray-800">Contact Message Details</h2>
               <button
                 onClick={closeModal}
                 className="text-gray-400 hover:text-gray-600 transition-colors"

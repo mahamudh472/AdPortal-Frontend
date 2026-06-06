@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router";
 import api from "@/lib/axios";
+import { formatToLocalDate } from "@/lib/dateUtils";
 
 interface AdItem {
   ad_name: string;
@@ -88,8 +89,7 @@ const Step7Review: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "—";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    return formatToLocalDate(dateString);
   };
 
   const handlePublish = () => {

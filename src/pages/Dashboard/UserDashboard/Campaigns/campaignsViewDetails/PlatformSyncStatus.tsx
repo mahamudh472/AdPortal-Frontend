@@ -1,4 +1,5 @@
 import React from "react";
+import { formatToLocalDateTime } from "@/lib/dateUtils";
 
 type PlatformSyncStatusProps = {
   syncStatuses?: Record<string, {
@@ -33,7 +34,7 @@ const PlatformSyncStatus: React.FC<PlatformSyncStatusProps> = ({ syncStatuses })
                 </span>
               </div>
               <span className="text-[10px] text-slate-500">
-                {new Date(sync.updated_at).toLocaleString()}
+                {formatToLocalDateTime(sync.updated_at)}
               </span>
             </div>
             

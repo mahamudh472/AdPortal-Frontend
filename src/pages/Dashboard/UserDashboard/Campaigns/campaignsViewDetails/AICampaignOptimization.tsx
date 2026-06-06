@@ -1,4 +1,5 @@
 import React from "react";
+import { formatToLocalDateTime } from "@/lib/dateUtils";
 import type {
   impactLevel,
 } from "@/types/aiCampaignOptimization";
@@ -108,13 +109,7 @@ const AICampaignOptimization: React.FC<AICampaignOptimizationProps> = ({ campaig
                   {insight.description}
                 </p>
                 <p className="mt-2 text-xs text-slate-400">
-                  {new Date(insight.created_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  {formatToLocalDateTime(insight.created_at)}
                 </p>
               </div>
 

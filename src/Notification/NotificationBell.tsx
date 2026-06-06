@@ -9,6 +9,7 @@ import {
   markAsRead,
   type Notification,
 } from "../features/auth/Context/notificationsSlice";
+import { formatToLocalDateTime } from "../lib/dateUtils";
 
 const NotificationBell: React.FC = () => {
   const unread = useSelector((s: RootState) => s.notifications.unreadCount);
@@ -37,12 +38,7 @@ const NotificationBell: React.FC = () => {
   }, [open]);
 
   const fmtDate = (iso?: string) => {
-    if (!iso) return "";
-    try {
-      return new Date(iso).toLocaleString();
-    } catch {
-      return iso;
-    }
+    return formatToLocalDateTime(iso);
   };
 
   const previewItems = (

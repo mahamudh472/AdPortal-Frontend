@@ -13,6 +13,7 @@ import SpendOverview from "./SpendOverview/SpendOverview";
 import CampaignsTable from "./RecentCampaigns/RecentCampaigns";
 import api from "@/lib/axios";
 import { Link } from "react-router-dom";
+import { parseUTCDate, formatToLocalDate } from "@/lib/dateUtils";
 
 // Types for dashboard data
 interface DashboardData {
@@ -379,11 +380,15 @@ const UserDashboard: React.FC = () => {
       return "2 minutes ago";
     }
     const latestInsight = dashboardData.ai_insights.sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      (a, b) => {
+        const timeA = parseUTCDate(a.created_at)?.getTime() || 0;
+        const timeB = parseUTCDate(b.created_at)?.getTime() || 0;
+        return timeB - timeA;
+      }
     )[0];
 
-    const updatedTime = new Date(latestInsight.created_at);
+    const updatedTime = parseUTCDate(latestInsight.created_at);
+    if (!updatedTime) return "—";
     const now = new Date();
     const diffMs = now.getTime() - updatedTime.getTime();
     const diffMins = Math.floor(diffMs / 60000);
@@ -394,7 +399,7 @@ const UserDashboard: React.FC = () => {
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24)
       return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    return updatedTime.toLocaleDateString();
+    return formatToLocalDate(updatedTime);
   };
 
   if (loading) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router";
+import { formatToLocalDate } from "@/lib/dateUtils";
 
 interface ApiResponse {
   id?: number;
@@ -59,8 +60,7 @@ const Step7Review: React.FC = () => {
   // Helper function to format date
   const formatDate = (dateString?: string) => {
     if (!dateString) return "Not set";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return formatToLocalDate(dateString, {
       year: 'numeric',
       month: 'long',
       day: 'numeric'

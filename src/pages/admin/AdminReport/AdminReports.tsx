@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../../lib/axios";
+import { formatToLocalDate } from "@/lib/dateUtils";
 
 import type {
   ReportCard,
@@ -159,15 +160,7 @@ const transformApiReport = (apiReport: ApiReport): ReportCard => {
     id: apiReport.id,
     title: title,
     type: apiReport.report_type ? (apiTypeToDisplay[apiReport.report_type] || apiReport.report_type) : 'Unknown',
-    date: apiReport.created_at ? new Date(apiReport.created_at).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    }) : new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    }),
+    date: apiReport.created_at ? formatToLocalDate(apiReport.created_at) : formatToLocalDate(new Date()),
     status: apiReport.status || 'PROCESSING',
     fileUrl: apiReport.file || '',
     fileName: apiReport.name || 'report.xlsx',

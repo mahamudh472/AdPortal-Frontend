@@ -16,6 +16,7 @@ import type { PieLabelRenderProps } from "recharts";
 
 import api from "@/lib/axios";
 import AdminRecentCampaign from "./AdminManagementPages";
+import { parseUTCDate } from "@/lib/dateUtils";
 
 // Types based on actual API response
 interface ChartDataPoint {
@@ -186,7 +187,7 @@ const AdminDashboard: React.FC = () => {
 
     return dashboardData.recent_campaigns.map(campaign => {
       // Calculate time ago
-      const createdDate = new Date(campaign.created_at);
+      const createdDate = parseUTCDate(campaign.created_at) || new Date();
       const now = new Date();
       const diffTime = Math.abs(now.getTime() - createdDate.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

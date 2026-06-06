@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FileText, Calendar, TrendingUp, X, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../lib/axios";
+import { formatToLocalDate } from "@/lib/dateUtils";
 import type {
   ReportType,
   Platform,
@@ -50,11 +51,7 @@ const transformApiReportToUi = (apiReport: ApiReport): RecentReport => {
   return {
     id: apiReport.id,
     title: apiReport.name,
-    date: new Date(apiReport.created_at).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    }),
+    date: formatToLocalDate(apiReport.created_at),
     frequency: apiReport.report_type.charAt(0).toUpperCase() + apiReport.report_type.slice(1),
     fileUrl: apiReport.file
   };

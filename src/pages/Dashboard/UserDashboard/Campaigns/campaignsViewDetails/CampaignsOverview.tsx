@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router";
+import { formatToLocalDateTime } from "@/lib/dateUtils";
 
 
 type Campaign = {
@@ -129,7 +130,7 @@ const CampaignsOverview: React.FC<CampaignsOverviewProps> = ({ campaign }) => {
           <div>
             <p className="text-xs text-slate-500">Created At</p>
             <p className="text-sm font-medium text-slate-900">
-              {new Date(campaign.created_at).toLocaleString()}
+              {formatToLocalDateTime(campaign.created_at)}
             </p>
           </div>
           <div>

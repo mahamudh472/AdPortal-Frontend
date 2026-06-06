@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../../lib/axios";
+import { formatToLocalDate, parseUTCDate } from "@/lib/dateUtils";
 
 import type {
   UserItem,
@@ -141,18 +142,14 @@ const transformApiUser = (apiUser: ApiUser, index: number): UserItem => {
   // Format date
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Never';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+    return formatToLocalDate(dateString);
   };
 
   // Get last active time
   const getLastActive = () => {
     if (!apiUser.last_login) return 'Never';
-    const lastLogin = new Date(apiUser.last_login);
+    const lastLogin = parseUTCDate(apiUser.last_login);
+    if (!lastLogin) return 'Never';
     const now = new Date();
     const diffMs = now.getTime() - lastLogin.getTime();
     const diffMins = Math.floor(diffMs / 60000);

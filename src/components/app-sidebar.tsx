@@ -428,7 +428,7 @@ const adminItems = [
     icon: FileText,
   },
   {
-    title: "All Contact",
+    title: "Contact Messages",
     url: "/admin-dashboard/contact-management",
     icon: FileText,
   },
