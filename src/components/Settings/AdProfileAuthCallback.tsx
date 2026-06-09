@@ -45,6 +45,11 @@ const AdProfileAuthCallback = ({
   const [error, setError] = useState<string | null>(null);
   const [_pagingCursors, setPagingCursors] = useState<PagingCursors | null>(null);
 
+  // Google Ads flow states
+  const [subAccounts, setSubAccounts] = useState<AdAccount[]>([]);
+  const [selectedSubAccount, setSelectedSubAccount] = useState<AdAccount | null>(null);
+  const [loadingSubAccounts, setLoadingSubAccounts] = useState(false);
+
   const getOrgId = (): string => {
     const urlOrgId = searchParams.get("state");
     if (urlOrgId) return urlOrgId;
@@ -81,11 +86,14 @@ const AdProfileAuthCallback = ({
   const fetchAdAccounts = async () => {
     try {
       setLoading((prev) => ({ ...prev, accounts: true }));
-      const response = await api.get<AdAccountsResponse>("/main/get-ad-profiles", {
-        params: {
-          platform,
-          org_id,
-        },
+      const isGoogle = platform === "google";
+      const endpoint = "/main/get-ad-profiles";
+      const queryParams = isGoogle
+        ? { platform: "GOOGLE", org_id }
+        : { platform, org_id };
+
+      const response = await api.get<AdAccountsResponse>(endpoint, {
+        params: queryParams,
       });
       setAdAccounts(response.data.data || []);
       if (response.data.paging?.cursors) {
@@ -99,19 +107,61 @@ const AdProfileAuthCallback = ({
     }
   };
 
+  const fetchSubAccounts = async (managerId: string) => {
+    try {
+      setLoadingSubAccounts(true);
+      setError(null);
+      const response = await api.get<AdAccountsResponse>("/main/get-ad-profiles", {
+        params: {
+          platform: "GOOGLE",
+          org_id,
+          manager_id: managerId,
+        },
+      });
+      setSubAccounts(response.data.data || []);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to fetch sub-accounts");
+      console.error(err);
+    } finally {
+      setLoadingSubAccounts(false);
+    }
+  };
+
+  const handleSelectAccount = (account: AdAccount) => {
+    setSelectedAccount(account);
+    if (platform === "google") {
+      setSelectedSubAccount(null);
+      setSubAccounts([]);
+      fetchSubAccounts(account.acc_id);
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedAccount) {
       setError("Please select an ad account");
       return;
     }
 
+    if (platform === "google" && !selectedSubAccount) {
+      setError("Please select a client account");
+      return;
+    }
+
     try {
       setLoading((prev) => ({ ...prev, saving: true }));
 
-      await api.post(`/main/select-ad-profile/?org_id=${org_id}`, {
-        platform: platformApiKey,
-        acc_id: selectedAccount.acc_id,
-      });
+      const payload = platform === "google"
+        ? {
+            platform: "GOOGLE",
+            manager_id: selectedAccount.acc_id,
+            acc_id: selectedSubAccount?.acc_id,
+          }
+        : {
+            platform: platformApiKey,
+            acc_id: selectedAccount.acc_id,
+          };
+
+      await api.post(`/main/select-ad-profile/?org_id=${org_id}`, payload);
 
       setTimeout(() => {
         window.location.href = "/user-dashboard/dashboard";
@@ -195,7 +245,9 @@ const AdProfileAuthCallback = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-gray-700">Step 1</span>
-              <h2 className="text-base font-medium text-gray-900">Ad Accounts</h2>
+              <h2 className="text-base font-medium text-gray-900">
+                {platform === "google" ? "Manager Accounts" : "Ad Accounts"}
+              </h2>
             </div>
             {loading.accounts && (
               <div className="flex items-center gap-1">
@@ -212,7 +264,7 @@ const AdProfileAuthCallback = ({
             <LoadingSpinner />
           ) : adAccounts.length === 0 ? (
             <div className="border border-gray-200 rounded-lg p-8 text-center">
-              <p className="text-sm text-gray-400">No ad accounts found</p>
+              <p className="text-sm text-gray-400">No {platform === "google" ? "manager" : "ad"} accounts found</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -225,7 +277,7 @@ const AdProfileAuthCallback = ({
                 return (
                   <div
                     key={accountKey}
-                    onClick={() => setSelectedAccount(account)}
+                    onClick={() => handleSelectAccount(account)}
                     className={`
                       border rounded-lg p-4 cursor-pointer transition-all duration-150
                       ${isSelected ? "border-blue-500 bg-blue-50 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}
@@ -233,7 +285,7 @@ const AdProfileAuthCallback = ({
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-gray-500">Account ID</p>
+                        <p className="text-xs text-gray-500">{platform === "google" ? "Manager ID" : "Account ID"}</p>
                         <p className="text-sm font-medium text-gray-900 mt-0.5">{accountLabel}</p>
                         <p className="text-xs text-gray-400 mt-1">{account.acc_id}</p>
                       </div>
@@ -251,12 +303,81 @@ const AdProfileAuthCallback = ({
               })}
             </div>
           )}
+
+          {/* Step 2: Client Accounts (only for Google) */}
+          {platform === "google" && selectedAccount && (
+            <div className="space-y-4 pt-6 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">Step 2</span>
+                  <h2 className="text-base font-medium text-gray-900">Client Accounts</h2>
+                </div>
+                {loadingSubAccounts && (
+                  <div className="flex items-center gap-1">
+                    <div
+                      className="animate-spin rounded-full h-3 w-3 border-b"
+                      style={{ borderColor: "#3B82F6" }}
+                    ></div>
+                    <span className="text-xs text-gray-500">Loading sub-accounts...</span>
+                  </div>
+                )}
+              </div>
+
+              {loadingSubAccounts ? (
+                <LoadingSpinner />
+              ) : subAccounts.length === 0 ? (
+                <div className="border border-gray-200 rounded-lg p-8 text-center">
+                  <p className="text-sm text-gray-400">No client accounts found under this manager account</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {subAccounts.map((account) => {
+                    const accountKey = getAccountKey(account);
+                    const selectedSubAccountKey = selectedSubAccount ? getAccountKey(selectedSubAccount) : "";
+                    const accountLabel = account.name || account.account_name || account.account_id || account.acc_id;
+                    const isSelected = selectedSubAccountKey === accountKey;
+
+                    return (
+                      <div
+                        key={accountKey}
+                        onClick={() => setSelectedSubAccount(account)}
+                        className={`
+                          border rounded-lg p-4 cursor-pointer transition-all duration-150
+                          ${isSelected ? "border-blue-500 bg-blue-50 shadow-sm" : "border-gray-200 bg-white hover:border-gray-300"}
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-500">Client Account ID</p>
+                            <p className="text-sm font-medium text-gray-900 mt-0.5">{accountLabel}</p>
+                            <p className="text-xs text-gray-400 mt-1">{account.acc_id}</p>
+                          </div>
+
+                          {isSelected && (
+                            <div className="h-6 w-6 rounded-full bg-blue-500 flex items-center justify-center">
+                              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end">
           <button
             onClick={handleSave}
-            disabled={!selectedAccount || loading.saving || loading.accounts}
+            disabled={
+              platform === "google"
+                ? !selectedAccount || !selectedSubAccount || loading.saving || loading.accounts || loadingSubAccounts
+                : !selectedAccount || loading.saving || loading.accounts
+            }
             className="px-6 py-2 text-white text-sm rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             style={{ backgroundColor: "#3B82F6" }}
           >
@@ -271,7 +392,12 @@ const AdProfileAuthCallback = ({
           </button>
         </div>
 
-        {selectedAccount && !loading.saving && !loading.accounts && (
+        {platform === "google" && selectedAccount && selectedSubAccount && !loading.saving && !loading.accounts && !loadingSubAccounts && (
+          <div className="mt-4 text-right text-xs text-gray-500">
+            Ready to save: {selectedSubAccount.name || selectedSubAccount.account_name || selectedSubAccount.account_id}
+          </div>
+        )}
+        {platform !== "google" && selectedAccount && !loading.saving && !loading.accounts && (
           <div className="mt-4 text-right text-xs text-gray-500">
             Ready to save: {selectedAccount.name || selectedAccount.account_name || selectedAccount.account_id}
           </div>
