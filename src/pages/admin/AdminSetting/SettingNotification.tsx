@@ -1,7 +1,7 @@
 import api from "@/lib/axios";
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
-
+import { Loader2, RefreshCw } from "lucide-react";
 
 type ToggleItem = {
   id: string;
@@ -52,6 +52,7 @@ const SettingNotification: React.FC = () => {
   // Fetch notification settings on component mount
   useEffect(() => {
     fetchNotificationSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchNotificationSettings = async () => {
@@ -60,7 +61,6 @@ const SettingNotification: React.FC = () => {
       const response = await api.get("/admin/notification-settings/");
       
       if (response.data) {
-        // Assuming the API returns an object with notification settings
         const settings = response.data;
         
         setEnabled({
@@ -73,12 +73,8 @@ const SettingNotification: React.FC = () => {
     } catch (error: any) {
       console.error("Error fetching notification settings:", error);
       
-      // Only show error toast if it's not the initial load with no settings
       if (!initialLoad || error.response?.status !== 404) {
-        toast.error("Failed to load notification settings", {
-          duration: 4000,
-          position: "top-center",
-        });
+        toast.error("Failed to load notification settings");
       }
     } finally {
       setLoading(false);
@@ -90,11 +86,9 @@ const SettingNotification: React.FC = () => {
     setSaving(prev => ({ ...prev, [id]: true }));
     
     try {
-      // First, get the current settings to preserve other values
       const notification = NOTIFICATIONS.find(n => n.id === id);
       if (!notification) return;
 
-      // Prepare the data object with all current settings
       const settingsData = {
         new_user_signup: enabled.new_users,
         failed_payment: enabled.failed_payments,
@@ -102,43 +96,17 @@ const SettingNotification: React.FC = () => {
         security_alerts: enabled.security_alerts,
       };
 
-      // Update the specific setting
       settingsData[notification.apiKey as keyof typeof settingsData] = value;
 
-      // Send to API
       const response = await api.put("/admin/notification-settings/", settingsData);
       
       if (response.status === 200 || response.status === 201) {
-        toast.success(`${notification.title} ${value ? 'enabled' : 'disabled'} successfully`, {
-          duration: 3000,
-          position: "top-center",
-        });
+        toast.success(`${notification.title} ${value ? 'enabled' : 'disabled'} successfully`);
       }
     } catch (error: any) {
       console.error("Error saving notification setting:", error);
-      
-      // Revert the toggle on error
       setEnabled(prev => ({ ...prev, [id]: !value }));
-      
-      // Show error message
-      if (error.response?.data) {
-        const errorData = error.response.data;
-        const errorMessage = (Object.values(errorData).flat()[0] as string) || "Failed to save setting";
-        toast.error(errorMessage, {
-          duration: 4000,
-          position: "top-center",
-        });
-      } else if (error.message === "Network Error") {
-        toast.error("Network error. Please check your connection.", {
-          duration: 4000,
-          position: "top-center",
-        });
-      } else {
-        toast.error("Failed to save notification setting", {
-          duration: 4000,
-          position: "top-center",
-        });
-      }
+      toast.error("Failed to save notification setting");
     } finally {
       setSaving(prev => ({ ...prev, [id]: false }));
     }
@@ -146,31 +114,33 @@ const SettingNotification: React.FC = () => {
 
   const toggle = async (id: string) => {
     const newValue = !enabled[id];
-    
-    // Optimistically update UI
     setEnabled((prev) => ({ ...prev, [id]: newValue }));
-    
-    // Save to API
     await saveNotificationSetting(id, newValue);
   };
 
   if (loading) {
     return (
       <div className="space-y-4">
-        <h2 className="text-base font-semibold text-slate-900">
-          Notification Preferences
-        </h2>
+        <div>
+          <h2 className="text-sm font-bold text-slate-900">
+            Notification Preferences
+          </h2>
+          <p className="text-xs text-slate-400 font-semibold mt-0.5">
+            Configure how you receive alerts and status summaries
+          </p>
+        </div>
+        
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="flex items-center justify-between rounded-xl border bg-white px-4 py-3 animate-pulse"
+              className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white px-5 py-4 animate-pulse"
             >
               <div className="space-y-2">
-                <div className="h-4 w-32 bg-slate-200 rounded"></div>
-                <div className="h-3 w-48 bg-slate-200 rounded"></div>
+                <div className="h-4 w-32 bg-slate-100 rounded"></div>
+                <div className="h-3 w-48 bg-slate-100 rounded"></div>
               </div>
-              <div className="h-5 w-9 bg-slate-200 rounded-full"></div>
+              <div className="h-5 w-9 bg-slate-100 rounded-full"></div>
             </div>
           ))}
         </div>
@@ -180,65 +150,61 @@ const SettingNotification: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-base font-semibold text-slate-900">
-        Notification Preferences
-      </h2>
+      <div>
+        <h2 className="text-sm font-bold text-slate-900">
+          Notification Preferences
+        </h2>
+        <p className="text-xs text-slate-400 font-semibold mt-0.5">
+          Configure how you receive alerts and status summaries
+        </p>
+      </div>
 
-      <div className="space-y-3">
+      <div className="space-y-3 max-w-xl">
         {NOTIFICATIONS.map((item) => (
           <div
             key={item.id}
-            className="flex items-center justify-between rounded-xl border bg-white px-4 py-3"
+            className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white hover:bg-slate-50/20 px-5 py-4 transition-colors duration-200"
           >
-            {/* TEXT */}
             <div>
-              <p className="text-sm font-medium text-slate-900">
+              <p className="text-xs font-bold text-slate-800">
                 {item.title}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">
                 {item.description}
               </p>
             </div>
 
-            {/* TOGGLE with loading state */}
+            {/* Toggle Switch knob animation */}
             <button
               onClick={() => toggle(item.id)}
               disabled={saving[item.id]}
-              className={`relative h-5 w-9 rounded-full transition ${
-                enabled[item.id] ? "bg-blue-600" : "bg-slate-300"
+              className={`relative h-5 w-9 rounded-full transition-colors duration-200 focus:outline-none cursor-pointer ${
+                enabled[item.id] ? "bg-blue-600" : "bg-slate-200"
               } ${saving[item.id] ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition ${
-                  enabled[item.id] ? "left-4" : "left-0.5"
-                } ${saving[item.id] ? "scale-90" : ""}`}
-              />
+              {saving[item.id] ? (
+                <div className="absolute top-1 left-3 flex items-center justify-center">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                </div>
+              ) : (
+                <span
+                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                    enabled[item.id] ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              )}
             </button>
           </div>
         ))}
       </div>
 
-      {/* Save All Button (Alternative approach) */}
-      <div className="flex justify-end pt-4 border-t border-slate-100">
+      <div className="flex justify-end pt-5 max-w-xl border-t border-slate-100">
         <button
           onClick={fetchNotificationSettings}
-          className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
+          className="text-xs font-bold text-slate-400 hover:text-slate-600 flex items-center gap-1.5 cursor-pointer transition-colors"
         >
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="16" 
-            height="16" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2" 
-            strokeLinecap="round" 
-            strokeLinejoin="round"
-          >
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-            <path d="M3 3v5h5"/>
-          </svg>
-          Refresh
+          <RefreshCw size={12} />
+          <span>Refresh</span>
         </button>
       </div>
     </div>

@@ -10,7 +10,8 @@ import {
   Search,
   Trash2,
   AlertTriangle,
-  X
+  X,
+  Loader2,
 } from 'lucide-react';
 
 import { toast } from 'sonner';
@@ -33,8 +34,6 @@ interface PaginatedResponse {
   previous: string | null;
   results: Contact[];
 }
-
-
 
 const AdminContact: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -91,11 +90,11 @@ const AdminContact: React.FC = () => {
   const indexOfFirstItem: number = (currentPage - 1) * itemsPerPage;
   const indexOfLastItem: number = currentPage * itemsPerPage;
 
-  // Truncate text to 17 characters
-  const truncateText = (text: string): string => {
+  // Truncate text
+  const truncateText = (text: string, len: number = 22): string => {
     if (!text) return '';
-    if (text.length <= 17) return text;
-    return text.substring(0, 17) + '...';
+    if (text.length <= len) return text;
+    return text.substring(0, len) + '...';
   };
 
   // Open modal with selected contact
@@ -130,85 +129,79 @@ const AdminContact: React.FC = () => {
     setDeleteLoading(true);
     try {
       await api.delete(`/admin/contact-messages/${contactToDelete.id}/`);
-      
-      // Re-fetch to update list after deletion
       await fetchContacts(currentPage, debouncedSearch);
-
-      // Close modals
       closeDeleteModal();
       if (selectedContact?.id === contactToDelete.id) {
         closeModal();
       }
-      
-      // Show success message
-      toast.success('Contact message deleted successfully', {
-        duration: 3000,
-        position: 'top-center',
-      });
-      
+      toast.success('Contact message deleted successfully');
     } catch (err) {
       console.error('Error deleting contact:', err);
-      toast.error('Failed to delete message. Please try again.', {
-        duration: 4000,
-        position: 'top-center',
-      });
+      toast.error('Failed to delete message. Please try again.');
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  // Format date
-  const formatDate = (dateString: string): string => {
-    return formatToLocalDate(dateString);
-  };
-
-  // Format datetime for modal
-  const formatDateTime = (dateString: string): string => {
-    return formatToLocalDateTime(dateString);
+  const getInitials = (name: string) => {
+    if (!name) return "U";
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
   };
 
   return (
-    <div className="min-h-screen  p-2">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="lg:text-3xl text-2xl font-bold text-gray-800 mb-2">Contact Messages</h1>
-        <p className="text-gray-600">View and manage messages submitted via the public contact form</p>
+      <div>
+        <h1 className="text-xl font-bold text-slate-900">Contact Messages</h1>
+        <p className="text-sm text-slate-500 font-medium mt-0.5">
+          View and manage messages submitted via the public contact form
+        </p>
       </div>
 
       {/* Search Bar */}
-      <div className="mb-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center bg-white border border-slate-100 p-4 rounded-3xl shadow-sm">
+        <div className="relative flex-1 max-w-md flex items-center border border-slate-200 rounded-2xl px-3 py-2 bg-slate-50/50 focus-within:bg-white focus-within:border-blue-500 transition-colors">
+          <Search className="text-slate-400 mr-2 w-4 h-4" />
           <input
             type="text"
             placeholder="Search messages by name, email, or subject..."
-            className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full bg-transparent text-xs font-semibold text-slate-700 outline-none placeholder:text-slate-400"
             value={searchTerm}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
           />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm("")} className="text-slate-400 hover:text-slate-600 px-1 font-bold text-sm">
+              ×
+            </button>
+          )}
         </div>
       </div>
 
       {/* Loading State */}
       {loading && (
-        <div className="bg-white rounded-xl border overflow-hidden p-12">
-          <div className="flex flex-col items-center justify-center">
-            <div className="w-12 h-12 border-4 border-gray-200 border-t-blue-500 rounded-full animate-spin"></div>
-            <p className="mt-4 text-gray-600">Loading contact messages...</p>
+        <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden p-16 shadow-sm flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto" />
+            <p className="mt-4 text-xs text-slate-500 font-semibold">Loading contact messages...</p>
           </div>
         </div>
       )}
 
       {/* Error State */}
       {error && !loading && (
-        <div className="bg-white rounded-xl border overflow-hidden p-12">
-          <div className="flex flex-col items-center justify-center">
-            <AlertTriangle className="w-16 h-16 text-red-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-700 mb-2">Error Loading Messages</h3>
-            <p className="text-gray-500 mb-4">{error}</p>
+        <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden p-16 shadow-sm flex items-center justify-center">
+          <div className="text-center">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-sm font-bold text-slate-900 mb-2">Error Loading Messages</h3>
+            <p className="text-xs text-slate-500 font-semibold mb-4">{error}</p>
             <button
               onClick={() => fetchContacts(currentPage, debouncedSearch)}
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-sm"
             >
               Try Again
             </button>
@@ -218,117 +211,118 @@ const AdminContact: React.FC = () => {
 
       {/* Table */}
       {!loading && !error && (
-        <div className="bg-white rounded-xl border overflow-hidden">
+        <div className="rounded-3xl border border-slate-100 bg-white overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-linear-to-r bg-gray-100 text-gray-800">
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Email</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Subject</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Message</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold">Date</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold">Actions</th>
+            <table className="w-full text-sm min-w-[800px]">
+              <thead className="bg-slate-50/50 text-slate-400 font-semibold border-b border-slate-100">
+                <tr>
+                  <th className="px-6 py-4 text-left w-[200px]">Name</th>
+                  <th className="px-6 py-4 text-left w-[220px]">Email</th>
+                  <th className="px-6 py-4 text-left w-[180px]">Subject</th>
+                  <th className="px-6 py-4 text-left w-[240px]">Message</th>
+                  <th className="px-6 py-4 text-center w-[140px]">Date</th>
+                  <th className="px-6 py-4 text-right pr-6 w-[180px]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {contacts.map((contact: Contact, index: number) => (
-                  <tr 
-                    key={contact.id} 
-                    className="hover:bg-gray-50 transition-colors"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-medium text-gray-900">{contact.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{contact.email}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-600">{truncateText(contact.subject)}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <MessageCircle className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{truncateText(contact.message)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm text-gray-600">{formatDate(contact.created_at)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => openModal(contact)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View
-                        </button>
-                        <button
-                          onClick={(e: React.MouseEvent) => openDeleteModal(contact, e)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
+              <tbody className="divide-y divide-slate-100">
+                {contacts.length > 0 ? (
+                  contacts.map((contact: Contact) => (
+                    <tr 
+                      key={contact.id} 
+                      className="hover:bg-slate-50/50 transition-colors"
+                    >
+                      {/* Name with initials avatar */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                            {getInitials(contact.name)}
+                          </div>
+                          <span className="text-xs font-bold text-slate-900 leading-snug">{contact.name}</span>
+                        </div>
+                      </td>
+
+                      {/* Email */}
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-semibold text-slate-500 leading-snug">{contact.email}</span>
+                      </td>
+
+                      {/* Subject */}
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-bold text-slate-700">{truncateText(contact.subject, 20)}</span>
+                      </td>
+
+                      {/* Message */}
+                      <td className="px-6 py-4">
+                        <span className="text-xs font-semibold text-slate-400">{truncateText(contact.message, 30)}</span>
+                      </td>
+
+                      {/* Date */}
+                      <td className="px-6 py-4 text-center">
+                        <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{formatToLocalDate(contact.created_at)}</span>
+                        </div>
+                      </td>
+
+                      {/* Actions view / delete */}
+                      <td className="px-6 py-4 text-right pr-6">
+                        <div className="inline-flex gap-2 justify-end">
+                          <button
+                            onClick={() => openModal(contact)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 hover:text-blue-800 rounded-xl transition-colors text-xs font-bold cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>View</span>
+                          </button>
+                          <button
+                            onClick={(e: React.MouseEvent) => openDeleteModal(contact, e)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 hover:text-red-800 rounded-xl transition-colors text-xs font-bold cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="text-center py-16 text-slate-500 font-medium">
+                      <div className="max-w-md mx-auto">
+                        <MessageCircle className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                        <h3 className="text-sm font-bold text-slate-900 mb-2">No messages found</h3>
+                        <p className="text-xs text-slate-400 font-medium">Try adjusting your search terms to locate submitted forms.</p>
                       </div>
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Empty State */}
-          {contacts.length === 0 && (
-            <div className="text-center py-12">
-              <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-700 mb-2">No messages found</h3>
-              <p className="text-gray-500">Try adjusting your search or filter to find what you're looking for.</p>
-            </div>
-          )}
-
           {/* Pagination */}
           {totalCount > 0 && (
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
+            <div className="px-6 py-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs text-slate-400 font-semibold">
                 Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, totalCount)} of {totalCount} results
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <button
                   onClick={() => setCurrentPage((prev: number) => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className={`p-2 rounded-lg transition-colors ${
-                    currentPage === 1 
-                      ? 'text-gray-400 cursor-not-allowed' 
-                      : 'text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="rounded-xl border border-slate-200 text-slate-600 px-3.5 py-1.5 text-xs font-semibold disabled:opacity-50 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
-                <span className="px-4 py-2 bg-blue-500 text-white rounded-lg">
+                <span className="h-8 w-8 rounded-xl text-xs font-bold bg-blue-600 text-white shadow-sm flex items-center justify-center">
                   {currentPage}
                 </span>
                 <button
                   onClick={() => setCurrentPage((prev: number) => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className={`p-2 rounded-lg transition-colors ${
-                    currentPage === totalPages 
-                      ? 'text-gray-400 cursor-not-allowed' 
-                      : 'text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="rounded-xl border border-slate-200 text-slate-600 px-3.5 py-1.5 text-xs font-semibold disabled:opacity-50 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -338,85 +332,82 @@ const AdminContact: React.FC = () => {
 
       {/* View Modal */}
       {isModalOpen && selectedContact && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white bg- rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 w-full max-w-xl shadow-2xl animate-in fade-in zoom-in duration-200 max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
-              <h2 className="text-xl font-bold text-gray-800">Contact Message Details</h2>
-              <button
+            <div className="flex justify-between items-center mb-5 sticky top-0 bg-white pb-2 border-b border-slate-50">
+              <h3 className="text-lg font-bold text-slate-900">Message Details</h3>
+              <button 
                 onClick={closeModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="px-6 py-4 space-y-6">
+            <div className="space-y-4 text-xs font-semibold text-slate-700">
               {/* Name */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Full Name
+              <div>
+                <label className="block text-slate-400 mb-1 flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5" />
+                  <span>Full Name</span>
                 </label>
-                <p className="text-lg font-semibold text-gray-800 bg-gray-50 p-3 rounded-lg">
+                <p className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-slate-800 font-extrabold">
                   {selectedContact.name}
                 </p>
               </div>
 
               {/* Email */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  Email Address
+              <div>
+                <label className="block text-slate-400 mb-1 flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>Email Address</span>
                 </label>
-                <p className="text-lg text-gray-800 bg-gray-50 p-3 rounded-lg">
+                <p className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-slate-800 font-extrabold">
                   {selectedContact.email}
                 </p>
               </div>
 
               {/* Subject */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  Subject
+              <div>
+                <label className="block text-slate-400 mb-1 flex items-center gap-1.5">
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Subject</span>
                 </label>
-                <p className="text-lg text-gray-800 bg-gray-50 p-3 rounded-lg">
+                <p className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-slate-800 font-extrabold">
                   {selectedContact.subject}
                 </p>
               </div>
 
               {/* Message */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  Message
+              <div>
+                <label className="block text-slate-400 mb-1 flex items-center gap-1.5">
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>Message Body</span>
                 </label>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-                    {selectedContact.message}
-                  </p>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-slate-700 font-medium whitespace-pre-wrap leading-relaxed">
+                  {selectedContact.message}
                 </div>
               </div>
 
               {/* Date */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Submission Date & Time
+              <div>
+                <label className="block text-slate-400 mb-1 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Submitted On</span>
                 </label>
-                <p className="text-gray-800 bg-gray-50 p-3 rounded-lg">
-                  {formatDateTime(selectedContact.created_at)}
+                <p className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2.5 text-slate-800 font-extrabold">
+                  {formatToLocalDateTime(selectedContact.created_at)}
                 </p>
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
-           
+            <div className="flex justify-end gap-3 pt-6 border-t border-slate-50 mt-6">
               <button
                 onClick={closeModal}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer"
               >
                 Close
               </button>
@@ -427,60 +418,48 @@ const AdminContact: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && contactToDelete && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-50 border border-red-100 flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-800">Confirm Delete</h2>
+              <h2 className="text-sm font-bold text-slate-900">Confirm Deletion</h2>
             </div>
 
             {/* Modal Body */}
-            <div className="px-6 py-4">
-              <p className="text-gray-600">
+            <div className="text-xs text-slate-500 font-semibold leading-relaxed">
+              <p>
                 Are you sure you want to delete this contact message from{' '}
-                <span className="font-semibold text-gray-800">{contactToDelete.name}</span>?
+                <span className="font-extrabold text-slate-950">{contactToDelete.name}</span>?
               </p>
-              <p className="text-sm text-gray-500 mt-2">
-                This action cannot be undone.
+              <p className="mt-2 text-red-600">
+                This action is permanent and cannot be undone.
               </p>
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3">
+            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-slate-50">
               <button
                 onClick={closeDeleteModal}
                 disabled={deleteLoading}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-4 py-2.5 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
                 disabled={deleteLoading}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
               >
-                {deleteLoading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="w-4 h-4" />
-                    Delete
-                  </>
-                )}
+                {deleteLoading && <span className="animate-spin h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full" />}
+                <span>Delete</span>
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Add animation styles */}
-     
     </div>
   );
 };
