@@ -70,3 +70,20 @@ This document lists all properties and sections in the Admin Dashboard, User Man
 - **Front-end Workaround**:
   - Displays a clean visual empty state stating "No upcoming invoices / You're all caught up!".
 
+---
+
+## 5. Platform Analytics (`src/pages/admin/PlatformAnalytics/`)
+
+### Stat Cards Trend Sparklines
+- **API Gap**:
+  - The API only returns total aggregate metrics for New/Active users. It does not return data points for sparklines.
+- **Front-end Workaround**:
+  - The far-right wave graph sparkline paths for "Total New Users" and "Avg. Active Users" cards are custom SVG paths. The "Most Used Feature" circular ring preview is styled as an SVG segment at `62.5%`.
+
+### User Growth Summary (Concentric Ring Graphic)
+- **API Gap**:
+  - Concentric concentric circles vector representations do not exist in the database or api returns.
+- **Front-end Workaround**:
+  - Custom SVG graphics are drawn using vector nodes to yield concentric rings matching the required mockup metrics. Churned Users value (0) and trend percentages are simulated on the front-end.
+
+
