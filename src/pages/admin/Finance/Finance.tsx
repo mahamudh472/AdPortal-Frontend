@@ -3,23 +3,27 @@ import {
   DollarSign,
   TrendingUp,
   CreditCard,
-  XCircle,
-  ArrowUpRight,
-  ArrowDownRight,
   Calendar,
+  ChevronDown,
+  Users,
+  AlertCircle,
+  Activity,
+  ChevronRight,
 } from "lucide-react";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import { toast } from "sonner";
 import api from "../../../lib/axios";
-import { formatToLocalDate } from "@/lib/dateUtils";
 
 import type {
   FinanceDashboardData,
@@ -27,10 +31,12 @@ import type {
   TransactionsApiResponse,
   RevenueChartPoint,
   PlanRevenueDisplay,
-  StatCardData,
 } from "@/types/finance";
 
-// API functions
+/* =========================
+   API INTEGRATION
+ ========================= */
+
 const fetchFinanceStats = async (): Promise<FinanceDashboardData> => {
   const response = await api.get('/admin/finance/');
   return response.data;
@@ -41,7 +47,10 @@ const fetchTransactions = async (page: number = 1): Promise<TransactionsApiRespo
   return response.data;
 };
 
-// Helper function to format currency
+/* =========================
+   HELPERS
+ ========================= */
+
 const formatCurrency = (amount: number | string): string => {
   const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
   return new Intl.NumberFormat('en-US', {
@@ -52,12 +61,10 @@ const formatCurrency = (amount: number | string): string => {
   }).format(numAmount);
 };
 
-// Helper function to format percentage
 const formatPercentage = (value: number): string => {
   return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
 };
 
-// Helper function to get month abbreviation
 const getMonthAbbreviation = (month: string): string => {
   const months: Record<string, string> = {
     'Jan': 'Jan',
@@ -76,51 +83,120 @@ const getMonthAbbreviation = (month: string): string => {
   return months[month] || month;
 };
 
-// Helper function to format date
-const formatDate = (dateString: string): string => {
-  return formatToLocalDate(dateString);
+// Formats date string to match "Apr 18, 2026 - 10:24 AM" format in mockup
+const formatTransactionDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[date.getMonth()];
+    const day = date.getDate();
+    const year = date.getFullYear();
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${month} ${day}, ${year} - ${hours}:${minutes} ${ampm}`;
+  } catch (e) {
+    return dateString;
+  }
 };
 
-// Helper function to get status badge color
-const getStatusColor = (status: string): string => {
+const getPlanBadgeColor = (plan: string | null | undefined): string => {
+  if (!plan) return "bg-slate-50 text-slate-700 border-slate-100";
   const colors: Record<string, string> = {
-    paid: "bg-green-100 text-green-700",
-    pending: "bg-yellow-100 text-yellow-700",
-    failed: "bg-red-100 text-red-700",
-    refunded: "bg-purple-100 text-purple-700",
-    cancelled: "bg-slate-100 text-slate-700",
+    starter: "bg-blue-50 text-blue-700 border-blue-100",
+    growth: "bg-green-50 text-green-700 border-green-100",
+    scale: "bg-purple-50 text-purple-700 border-purple-100",
   };
-  return colors[status.toLowerCase()] || "bg-slate-100 text-slate-700";
+  return colors[plan.toLowerCase()] || "bg-slate-50 text-slate-700 border-slate-100";
 };
 
-// Helper function to get payment method icon color
-const getPaymentMethodColor = (method: string): string => {
-  const colors: Record<string, string> = {
-    stripe: "bg-indigo-100 text-indigo-600",
-    paypal: "bg-blue-100 text-blue-600",
-    bank_transfer: "bg-emerald-100 text-emerald-600",
-    card: "bg-purple-100 text-purple-600",
-  };
-  return colors[method.toLowerCase()] || "bg-slate-100 text-slate-600";
+/* =========================
+   SUBCOMPONENTS
+ ========================= */
+
+interface StatCardProps {
+  icon: React.ReactNode;
+  title: string;
+  value: string | number;
+  change?: string;
+  positive?: boolean;
+  bgColor?: string;
+  sparkline?: React.ReactNode;
+}
+
+const StatCard = ({
+  icon,
+  title,
+  value,
+  change,
+  positive,
+  bgColor,
+  sparkline,
+}: StatCardProps) => {
+  return (
+    <div className="rounded-3xl border border-slate-100 bg-white p-5 flex items-center justify-between shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className={`h-14 w-14 rounded-full flex items-center justify-center flex-shrink-0 ${bgColor || 'bg-slate-50 text-slate-600'}`}>
+          {icon}
+        </div>
+        <div>
+          <p className="text-[13px] font-semibold text-slate-500">{title}</p>
+          <p className="mt-1 text-2xl font-bold text-slate-900 leading-none">
+            {value}
+          </p>
+          {change && (
+            <p className={`mt-1.5 text-xs font-semibold flex items-center gap-0.5 ${
+              positive ? "text-green-600" : "text-slate-400"
+            }`}>
+              {positive ? "↑" : "↓"} {change}
+            </p>
+          )}
+        </div>
+      </div>
+      
+      {sparkline && (
+        <div className="w-16 h-10 flex items-center justify-end">
+          {sparkline}
+        </div>
+      )}
+    </div>
+  );
 };
+
+// Custom Area Chart Tooltip
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white border border-slate-100 p-3 rounded-2xl shadow-xl flex flex-col gap-0.5">
+        <p className="text-[10px] font-bold text-slate-400">{data.month} 2026</p>
+        <p className="text-sm font-bold text-[#3B82F6] flex items-center gap-1.5 mt-0.5">
+          <span className="h-2 w-2 rounded-full bg-[#3B82F6]" />
+          ${data.revenue.toLocaleString()}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+/* =========================
+   MAIN DASHBOARD COMPONENT
+ ========================= */
 
 const Finance: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<FinanceDashboardData | null>(null);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [transactionsLoading, setTransactionsLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
 
-  // Fetch data on mount and page change
   useEffect(() => {
     loadFinanceStats();
-  }, []);
-
-  useEffect(() => {
     loadTransactions();
-  }, [currentPage]);
+  }, []);
 
   const loadFinanceStats = async () => {
     setStatsLoading(true);
@@ -145,26 +221,112 @@ const Finance: React.FC = () => {
   const loadTransactions = async () => {
     setTransactionsLoading(true);
     try {
-      const data = await fetchTransactions(currentPage);
+      const data = await fetchTransactions(1);
       setTransactions(data.results);
-      setTotalCount(data.count);
-      setTotalPages(Math.ceil(data.count / 5));
     } catch (error: any) {
       console.error('Failed to fetch transactions:', error);
-      
       if (error.response?.status === 401) {
         toast.error('Session expired. Please log in again.');
       } else {
         toast.error('Failed to load transactions');
       }
-      
       setTransactions([]);
     } finally {
       setTransactionsLoading(false);
     }
   };
 
-  // Transform API data for charts
+  // Sparkline components
+  const SparklineBlue = () => (
+    <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1V24H1V23Z" fill="url(#sparkUsers)" opacity="0.1"/>
+      <defs>
+        <linearGradient id="sparkUsers" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#3B82F6"/>
+          <stop offset="100%" stopColor="#3B82F6" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+
+  const SparklineGreen = () => (
+    <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1" stroke="#10B981" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1V24H1V23Z" fill="url(#sparkMRR)" opacity="0.1"/>
+      <defs>
+        <linearGradient id="sparkMRR" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#10B981"/>
+          <stop offset="100%" stopColor="#10B981" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+
+  const SparklinePurple = () => (
+    <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1V24H1V23Z" fill="url(#sparkTrans)" opacity="0.1"/>
+      <defs>
+        <linearGradient id="sparkTrans" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#8B5CF6"/>
+          <stop offset="100%" stopColor="#8B5CF6" stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+
+  const SparklineRed = () => (
+    <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1 20H59" stroke="#EF4444" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+
+  // Stats cards data
+  const statCards = React.useMemo(() => {
+    if (!dashboardData) return [];
+
+    return [
+      {
+        icon: <DollarSign size={20} />,
+        title: "Monthly Revenue",
+        value: formatCurrency(dashboardData.monthly_revenue),
+        change: `${formatPercentage(dashboardData.mrr_growth)} vs last month`,
+        positive: dashboardData.mrr_growth >= 0,
+        bgColor: "bg-blue-50 text-blue-600",
+        sparkline: <SparklineBlue />,
+      },
+      {
+        icon: <TrendingUp size={20} />,
+        title: "MRR Growth",
+        value: formatPercentage(dashboardData.mrr_growth),
+        change: `${formatPercentage(dashboardData.mrr_growth)} vs last month`,
+        positive: dashboardData.mrr_growth >= 0,
+        bgColor: "bg-green-50 text-green-600",
+        sparkline: <SparklineGreen />,
+      },
+      {
+        icon: <CreditCard size={20} />,
+        title: "Total Transactions",
+        value: dashboardData.total_transactions.toString(),
+        change: `+${dashboardData.total_transactions} vs last month`,
+        positive: true,
+        bgColor: "bg-purple-50 text-purple-600",
+        sparkline: <SparklinePurple />,
+      },
+      {
+        icon: <AlertCircle size={20} />,
+        title: "Failed Payments",
+        value: dashboardData.failed_payments.toString(),
+        change: `-${dashboardData.failed_payments} vs last month`,
+        positive: dashboardData.failed_payments === 0,
+        bgColor: "bg-red-50 text-red-600",
+        sparkline: <SparklineRed />,
+      },
+    ];
+  }, [dashboardData]);
+
+  // Transform data for Area Chart
   const revenueChartData: RevenueChartPoint[] = React.useMemo(() => {
     if (!dashboardData?.revenue_overview) return [];
     
@@ -174,12 +336,11 @@ const Finance: React.FC = () => {
     }));
   }, [dashboardData]);
 
-  // Transform API data for revenue by plan
+  // Transform data for Revenue by Plan
   const revenueByPlan: PlanRevenueDisplay[] = React.useMemo(() => {
     if (!dashboardData?.revenue_by_plan) return [];
     
     const plans: PlanRevenueDisplay[] = [];
-    
     Object.entries(dashboardData.revenue_by_plan).forEach(([planKey, planData]) => {
       const planName = planKey.charAt(0).toUpperCase() + planKey.slice(1);
       plans.push({
@@ -192,365 +353,439 @@ const Finance: React.FC = () => {
     return plans.sort((a, b) => b.revenue - a.revenue);
   }, [dashboardData]);
 
-  // Calculate max revenue for progress bars
+  // Calculations for breakdown
   const maxRevenue = Math.max(...revenueByPlan.map((p) => p.revenue), 0);
+  const totalPlanRevenue = revenueByPlan.reduce((sum, p) => sum + p.revenue, 0);
+  const totalSubscribers = revenueByPlan.reduce((sum, p) => sum + p.subscribers, 0);
+  const avgRevenuePerSubscriber = totalSubscribers > 0 
+    ? (totalPlanRevenue / totalSubscribers).toFixed(2)
+    : "0.00";
 
-  // Prepare stat cards data
-  const statCards: StatCardData[] = React.useMemo(() => {
+  // Payment summary pie data
+  const paymentSummaryData = React.useMemo(() => {
     if (!dashboardData) return [];
-
     return [
-      {
-        icon: <DollarSign size={18} className="text-blue-600" />,
-        title: "Monthly Revenue",
-        value: formatCurrency(dashboardData.monthly_revenue),
-        change: formatPercentage(dashboardData.mrr_growth),
-        positive: dashboardData.mrr_growth > 0,
-        bgColor: "bg-blue-100",
-      },
-      {
-        icon: <TrendingUp size={18} className="text-emerald-600" />,
-        title: "MRR Growth",
-        value: formatPercentage(dashboardData.mrr_growth),
-        change: `${dashboardData.mrr_growth > 0 ? '+' : ''}${dashboardData.mrr_growth.toFixed(1)}%`,
-        positive: dashboardData.mrr_growth > 0,
-        bgColor: "bg-emerald-100",
-      },
-      {
-        icon: <CreditCard size={18} className="text-indigo-600" />,
-        title: "Total Transactions",
-        value: dashboardData.total_transactions.toString(),
-        change: `+${dashboardData.total_transactions}`,
-        positive: true,
-        bgColor: "bg-indigo-100",
-      },
-      {
-        icon: <XCircle size={18} className="text-red-600" />,
-        title: "Failed Payments",
-        value: dashboardData.failed_payments.toString(),
-        change: dashboardData.failed_payments > 0 ? `-${dashboardData.failed_payments}` : '0',
-        positive: dashboardData.failed_payments === 0,
-        bgColor: "bg-red-100",
-      },
+      { name: "Successful", value: dashboardData.monthly_revenue, color: "#3B82F6" },
+      { name: "Failed", value: dashboardData.failed_payments, color: "#EF4444" },
+      { name: "Refunded", value: 0, color: "#F59E0B" }
     ];
   }, [dashboardData]);
 
-  const handlePrevPage = () => {
-    setCurrentPage(prev => Math.max(1, prev - 1));
-  };
+  const activeSegments = paymentSummaryData.filter(d => d.value > 0);
+  const finalChartData = activeSegments.length > 0
+    ? activeSegments
+    : [{ name: "Successful", value: 1, color: "#3B82F6" }];
 
-  const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(totalPages, prev + 1));
-  };
-
+  if (statsLoading && !dashboardData) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600 font-medium">Loading finance data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* HEADER */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">
-            Finance
-          </h1>
-          <p className="text-sm text-slate-500">
-            Finance Overview
+          <h1 className="text-xl font-bold text-slate-900">Finance</h1>
+          <p className="text-sm text-slate-500 font-medium mt-0.5">
+            Overview of your revenue, transactions and subscriptions.
           </p>
         </div>
 
-        {/* Last Updated */}
-        {!statsLoading && dashboardData && (
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <Calendar size={14} />
-            Last updated: {new Date().toLocaleDateString()}
+        {/* Date Filter and Export */}
+        <div className="flex items-center gap-3 self-end sm:self-center">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm">
+            <Calendar size={14} className="text-slate-400" />
+            <span>Nov 1 - Apr 30, 2026</span>
+            <ChevronDown size={14} className="text-slate-400" />
           </div>
-        )}
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsLoading ? (
-          // Loading skeletons
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-white p-4 animate-pulse">
-              <div className="h-9 w-9 rounded-xl bg-slate-200 mb-3"></div>
-              <div className="h-4 w-24 bg-slate-200 rounded mb-2"></div>
-              <div className="h-6 w-16 bg-slate-200 rounded"></div>
-            </div>
-          ))
-        ) : (
-          statCards.map((card, index) => (
-            <StatCard
-              key={index}
-              icon={card.icon}
-              title={card.title}
-              value={card.value}
-              change={card.change}
-              positive={card.positive}
-              bgColor={card.bgColor}
-            />
-          ))
-        )}
-      </div>
-
-      {/* Revenue Chart */}
-      <div className="rounded-xl border bg-white p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">
-              Revenue Overview
-            </h2>
-            <p className="text-xs text-slate-500">
-              Monthly revenue trend
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-slate-600">
-            <span className="h-2 w-2 rounded-full bg-blue-600" />
-            Revenue
-          </div>
-        </div>
-
-        <div className="h-64">
-          {statsLoading ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : revenueChartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueChartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => `$${value}`} />
-                <Tooltip
-                  formatter={(value) => {
-                    const amount = typeof value === "number" ? value : Number(value ?? 0);
-
-                    return [`$${amount.toLocaleString()}`, "Revenue"];
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#2563EB"
-                  strokeWidth={2}
-                  dot={{ r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <p className="text-sm text-slate-400">No revenue data available</p>
-            </div>
-          )}
+          <button className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 px-4 py-2.5 rounded-xl cursor-pointer transition-colors shadow-sm">
+            <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
+            <span>Export</span>
+          </button>
         </div>
       </div>
 
-      {/* Revenue by Plan */}
-      <div className="rounded-xl border bg-white p-6">
-        <h2 className="mb-4 text-sm font-semibold text-slate-900">
-          Revenue by Plan
-        </h2>
+      {/* STATS CARDS ROW */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((card, index) => (
+          <StatCard
+            key={index}
+            icon={card.icon}
+            title={card.title}
+            value={card.value}
+            change={card.change}
+            positive={card.positive}
+            bgColor={card.bgColor}
+            sparkline={card.sparkline}
+          />
+        ))}
+      </div>
 
-        {statsLoading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="animate-pulse">
-                <div className="mb-1 flex items-center justify-between">
-                  <div>
-                    <div className="h-4 w-20 bg-slate-200 rounded mb-1"></div>
-                    <div className="h-3 w-16 bg-slate-200 rounded"></div>
-                  </div>
-                  <div className="h-4 w-16 bg-slate-200 rounded"></div>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded">
-                  <div className="h-full bg-slate-300 rounded" style={{ width: '0%' }}></div>
-                </div>
+      {/* CHART & PLAN BREAKDOWN ROW */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue Overview Line Chart (col-span-2) */}
+        <div className="lg:col-span-2 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-bold text-slate-900 leading-snug">Revenue Overview</h2>
+              <p className="text-xs text-slate-400 font-semibold mt-0.5">Monthly revenue trend</p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer shadow-sm">
+                <span>Last 6 Months</span>
+                <ChevronDown size={12} className="text-slate-400" />
               </div>
-            ))}
+              <div className="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer shadow-sm">
+                <span>Monthly</span>
+                <ChevronDown size={12} className="text-slate-400" />
+              </div>
+            </div>
           </div>
-        ) : revenueByPlan.length > 0 ? (
-          <div className="space-y-4">
-            {revenueByPlan.map((plan) => {
-              const width = maxRevenue > 0 ? (plan.revenue / maxRevenue) * 100 : 0;
 
-              return (
-                <div key={plan.name}>
-                  <div className="mb-1 flex items-center justify-between text-sm">
-                    <div>
-                      <p className="font-medium text-slate-900">
-                        {plan.name}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {plan.subscribers} {plan.subscribers === 1 ? 'subscriber' : 'subscribers'}
-                      </p>
-                    </div>
-
-                    <p className="font-medium text-slate-900">
-                      {formatCurrency(plan.revenue)}
-                    </p>
-                  </div>
-
-                  <div className="h-2 w-full rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-blue-600 transition-all"
-                      style={{ width: `${width}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+          <div className="h-64 mt-4">
+            {revenueChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15}/>
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                  <XAxis 
+                    dataKey="month" 
+                    tickLine={false} 
+                    axisLine={false} 
+                    tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 'bold' }} 
+                  />
+                  <YAxis 
+                    domain={[0, 2800]}
+                    ticks={[0, 700, 1400, 2100, 2800]}
+                    tickLine={false} 
+                    axisLine={false} 
+                    tickFormatter={(v) => `$${v.toLocaleString()}`} 
+                    tick={{ fill: '#94A3B8', fontSize: 11, fontWeight: 'bold' }} 
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#3B82F6"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                    activeDot={{ r: 6, fill: "#3B82F6", stroke: "#FFFFFF", strokeWidth: 2 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <p className="text-xs text-slate-400 font-semibold">No revenue data available</p>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="py-8 text-center">
-            <p className="text-sm text-slate-400">No plan revenue data available</p>
-          </div>
-        )}
-      </div>
-
-      {/* Recent Transactions */}
-      <div className="rounded-xl border bg-white">
-        <div className="px-6 py-4 border-b flex items-center justify-between">
-          <h2 className="font-semibold text-slate-900">
-            Recent Transactions
-          </h2>
-          {transactionsLoading ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent"></div>
-          ) : (
-            <span className="text-xs text-slate-500">
-              Total: {totalCount} transactions
-            </span>
-          )}
         </div>
 
-        {transactionsLoading ? (
-          <div className="px-6 py-8 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent"></div>
-            <p className="mt-2 text-sm text-slate-500">Loading transactions...</p>
+        {/* Revenue by Plan Progress Bars (col-span-1) */}
+        <div className="lg:col-span-1 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 className="font-bold text-slate-900 leading-snug">Revenue by Plan</h2>
+            <p className="text-xs text-slate-400 font-semibold mt-0.5">Breakdown of monthly revenue by subscription plan</p>
           </div>
-        ) : transactions.length > 0 ? (
-          <>
-            <div className="divide-y divide-slate-100">
-              {transactions.map((transaction) => (
-                <div
-                  key={transaction.id}
-                  className="flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`h-9 w-9 rounded-lg ${getPaymentMethodColor(transaction.payment_method)} flex items-center justify-center`}>
-                      <CreditCard size={16} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">
-                        {transaction.organization}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-slate-500">
-                          {formatDate(transaction.created_at)}
-                        </span>
-                        <span className="text-xs text-slate-300">•</span>
-                        <span className="text-xs text-slate-500 capitalize">
-                          {transaction.payment_method}
+
+          <div className="space-y-5 mt-6 flex-1">
+            {revenueByPlan.length > 0 ? (
+              revenueByPlan.map((plan) => {
+                const width = maxRevenue > 0 ? (plan.revenue / maxRevenue) * 100 : 0;
+                const percentage = totalPlanRevenue > 0 
+                  ? ((plan.revenue / totalPlanRevenue) * 100).toFixed(1)
+                  : "0.0";
+
+                return (
+                  <div key={plan.name} className="space-y-1.5">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-xs font-extrabold text-slate-800">{plan.name}</p>
+                        <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
+                          {plan.subscribers} {plan.subscribers === 1 ? 'subscriber' : 'subscribers'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-extrabold text-slate-800">{formatCurrency(plan.revenue)}</span>
+                        <span className="text-[10px] font-bold text-green-600 bg-green-50 border border-green-100 px-1.5 py-0.5 rounded-md">
+                          {percentage}%
                         </span>
                       </div>
                     </div>
+
+                    <div className="h-2 w-full rounded-full bg-slate-50 border border-slate-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-blue-600 transition-all duration-500"
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="py-8 text-center text-xs text-slate-400 font-semibold">
+                No plan revenue data available
+              </div>
+            )}
+          </div>
+
+          {/* Bottom stats layout */}
+          {dashboardData && (
+            <div className="mt-8 grid grid-cols-3 gap-2 border-t border-slate-50 pt-6">
+              {/* Stat 1 */}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                  <DollarSign className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <p className="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider leading-none">Total Revenue</p>
+                  <p className="text-xs font-extrabold text-slate-900 mt-1 leading-none">
+                    ${dashboardData.monthly_revenue.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Stat 2 */}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                  <Users className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <p className="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider leading-none">Total Subs</p>
+                  <p className="text-xs font-extrabold text-slate-900 mt-1 leading-none">{totalSubscribers}</p>
+                </div>
+              </div>
+
+              {/* Stat 3 */}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
+                  <Activity className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <p className="text-[8px] font-extrabold text-slate-400 uppercase tracking-wider leading-none">Avg. Rev / Sub</p>
+                  <p className="text-xs font-extrabold text-slate-900 mt-1 leading-none">${avgRevenuePerSubscriber}</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* BOTTOM TRANSACTION & PAYMENT SUMMARY STACK */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Recent Transactions (col-span-2) */}
+        <div className="lg:col-span-2 rounded-3xl border border-slate-100 bg-white shadow-sm flex flex-col justify-between overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-white">
+            <h2 className="font-bold text-slate-900 leading-snug">Recent Transactions</h2>
+            <button 
+              onClick={() => toast.info("Navigating to all transactions...")}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+            >
+              <span>View All Transactions</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+
+          <div className="overflow-x-auto flex-1">
+            {transactionsLoading ? (
+              <div className="px-6 py-12 text-center flex flex-col items-center justify-center">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-solid border-blue-600 border-r-transparent"></div>
+                <p className="mt-2 text-xs text-slate-500 font-medium">Loading transactions...</p>
+              </div>
+            ) : transactions.length > 0 ? (
+              <table className="w-full text-sm min-w-[550px]">
+                <thead className="bg-slate-50/50 text-slate-400 font-semibold border-b border-slate-100">
+                  <tr>
+                    <th className="px-6 py-3 text-left w-[240px]">Date</th>
+                    <th className="px-6 py-3 text-left w-[140px]">Description</th>
+                    <th className="px-6 py-3 text-left w-[100px]">Plan</th>
+                    <th className="px-6 py-3 text-left w-[100px]">Amount</th>
+                    <th className="px-6 py-3 text-left w-[80px]">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {transactions.map((transaction) => (
+                    <tr key={transaction.id} className="hover:bg-slate-50/50 transition-colors">
+                      {/* Date */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm border border-purple-100">
+                            <CreditCard size={14} />
+                          </div>
+                          <span className="text-xs font-bold text-slate-500">
+                            {formatTransactionDate(transaction.created_at)}
+                          </span>
+                        </div>
+                      </td>
+                      
+                      {/* Description */}
+                      <td className="px-6 py-4 font-bold text-slate-900 text-xs">
+                        {transaction.organization || "Stripe"}
+                      </td>
+
+                      {/* Plan Badge */}
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold border ${getPlanBadgeColor(transaction.plan)}`}>
+                          {transaction.plan ? (transaction.plan.charAt(0).toUpperCase() + transaction.plan.slice(1)) : "N/A"}
+                        </span>
+                      </td>
+
+                      {/* Amount */}
+                      <td className="px-6 py-4 font-bold text-slate-800 text-xs">
+                        {formatCurrency(transaction.amount)}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold bg-green-50 text-green-700 border border-green-100">
+                          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                          {transaction.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="px-6 py-12 text-center flex flex-col items-center justify-center">
+                <CreditCard size={48} className="text-slate-300 mb-3" />
+                <p className="text-xs text-slate-500 font-semibold">No transactions found</p>
+              </div>
+            )}
+          </div>
+
+          <div className="px-6 py-4 border-t border-slate-100">
+            <button 
+              onClick={() => toast.info("Navigating to all transactions...")}
+              className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+            >
+              <span>View all transactions</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Right: Payment Summary & Upcoming Invoices (col-span-1) */}
+        <div className="lg:col-span-1 space-y-6 flex flex-col">
+          {/* Payment Summary */}
+          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="font-bold text-slate-900 leading-snug">Payment Summary</h2>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg cursor-pointer">
+                <span>This Month</span>
+                <ChevronDown size={10} className="text-slate-400" />
+              </div>
+            </div>
+
+            {dashboardData && (
+              <div className="flex items-center gap-6 mt-4">
+                {/* Donut chart */}
+                <div className="relative w-28 h-28 flex items-center justify-center flex-shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={finalChartData}
+                        dataKey="value"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={36}
+                        outerRadius={48}
+                        paddingAngle={0}
+                      >
+                        {finalChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute flex flex-col items-center justify-center text-center">
+                    <span className="text-[13px] font-extrabold text-slate-900 leading-none">
+                      ${dashboardData.monthly_revenue.toLocaleString()}
+                    </span>
+                    <span className="text-[8px] text-slate-400 font-extrabold tracking-wider mt-0.5 uppercase">Total</span>
+                  </div>
+                </div>
+
+                {/* Legends */}
+                <div className="flex-1 space-y-2.5">
+                  <div className="flex items-start gap-2">
+                    <span className="h-2 w-2 rounded-full bg-blue-500 mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 leading-none">Successful</p>
+                      <p className="text-[11px] font-extrabold text-slate-800 mt-1 leading-none">
+                        ${dashboardData.monthly_revenue.toLocaleString()}{" "}
+                        <span className="text-[10px] font-semibold text-slate-400">({totalPlanRevenue > 0 ? "100.0" : "0.0"}%)</span>
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-slate-900">
-                      {formatCurrency(transaction.amount)}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(transaction.status)}`}>
-                        {transaction.status}
-                      </span>
-                      <span className="text-xs text-slate-400 capitalize">
-                        {transaction.plan}
-                      </span>
+                  <div className="flex items-start gap-2">
+                    <span className="h-2 w-2 rounded-full bg-red-500 mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 leading-none">Failed</p>
+                      <p className="text-[11px] font-extrabold text-slate-800 mt-1 leading-none">
+                        $0 <span className="text-[10px] font-semibold text-slate-400">(0.0%)</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2">
+                    <span className="h-2 w-2 rounded-full bg-amber-500 mt-1 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 leading-none">Refunded</p>
+                      <p className="text-[11px] font-extrabold text-slate-800 mt-1 leading-none">
+                        $0 <span className="text-[10px] font-semibold text-slate-400">(0.0%)</span>
+                      </p>
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="px-6 py-4 border-t flex items-center justify-between">
-                <button
-                  onClick={handlePrevPage}
-                  disabled={currentPage === 1}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                
-                <span className="text-sm text-slate-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-                
-                <button
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
               </div>
             )}
-          </>
-        ) : (
-          <div className="px-6 py-8 text-center">
-            <CreditCard size={48} className="mx-auto mb-4 text-slate-300" />
-            <p className="text-sm text-slate-500">No transactions found</p>
           </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
-const StatCard = ({
-  icon,
-  title,
-  value,
-  change,
-  positive,
-  bgColor,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  value: string | number;
-  change?: string;
-  positive?: boolean;
-  bgColor?: string;
-}) => {
-  return (
-    <div className="rounded-xl border bg-white p-4 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div className={`h-9 w-9 rounded-xl ${bgColor || 'bg-slate-100'} flex items-center justify-center`}>
-          {icon}
+          {/* Upcoming Invoices */}
+          <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-slate-900 leading-snug">Upcoming Invoices</h2>
+              <button 
+                onClick={() => toast.info("Navigating to invoices...")}
+                className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5 cursor-pointer"
+              >
+                <span>View All</span>
+                <ChevronRight size={10} />
+              </button>
+            </div>
+
+            {/* Empty state visual */}
+            <div className="flex flex-col items-center justify-center py-6 bg-slate-50/50 rounded-2xl border border-dashed border-slate-100 mt-2">
+              <div className="w-9 h-9 rounded-xl bg-blue-50/80 text-blue-500 flex items-center justify-center flex-shrink-0 shadow-sm border border-blue-100/50">
+                <Calendar size={18} />
+              </div>
+              <p className="text-xs font-extrabold text-slate-700 mt-3">No upcoming invoices</p>
+              <p className="text-[10px] text-slate-400 font-bold mt-1">You're all caught up!</p>
+            </div>
+          </div>
         </div>
-
-        {change && (
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs flex items-center gap-0.5 ${
-              positive
-                ? "bg-green-50 text-green-600"
-                : "bg-red-50 text-red-600"
-            }`}
-          >
-            {positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-            {change}
-          </span>
-        )}
       </div>
-
-
-      <p className="mt-3 text-sm text-slate-500">
-        {title}
-      </p>
-      <p className="mt-1 text-xl font-semibold text-slate-900">
-        {value}
-      </p>
     </div>
   );
 };

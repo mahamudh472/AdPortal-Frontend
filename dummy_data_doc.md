@@ -47,3 +47,26 @@ This document lists all properties and sections in the Admin Dashboard, User Man
 ### Interactive Add Organization / Invite Modal
 - **API Gap**:
   - Submitting the forms for "Add Organization" or "Invite User" currently simulates the addition of new items by injecting them directly into the React local state array (`setUsers` / `setOrganizations`) rather than performing a POST request (which will be implemented later).
+
+---
+
+## 4. Finance Dashboard (`src/pages/admin/Finance/`)
+
+### Stat Cards Trend Sparklines
+- **API Gap**:
+  - The backend only returns total transaction numbers and MRR/Monthly revenue values. It does not return data points for historical sparklines for individual cards.
+- **Front-end Workaround**:
+  - The far-right line graph sparklines inside the stats cards (Monthly Revenue, MRR Growth, Total Transactions, Failed Payments) are custom SVG paths rendered statically on the client.
+
+### Payment Summary
+- **API Gap**:
+  - The API does not return a distinct breakdown of successful vs refunded vs failed payment values.
+- **Front-end Workaround**:
+  - The Donut chart and legend represent Successful as `monthly_revenue`, Failed as `failed_payments`, and Refunded as `0` to keep the UI dynamically linked.
+
+### Upcoming Invoices
+- **API Gap**:
+  - No database table or API endpoint exists for upcoming invoices.
+- **Front-end Workaround**:
+  - Displays a clean visual empty state stating "No upcoming invoices / You're all caught up!".
+
