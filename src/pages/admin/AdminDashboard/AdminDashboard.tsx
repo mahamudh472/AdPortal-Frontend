@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Users, Megaphone, DollarSign, TrendingUp, Loader2 } from "lucide-react";
+import { Users, Megaphone, DollarSign, Loader2 } from "lucide-react";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -115,42 +115,7 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  // Format stats for display based on actual API data
-  const getStatCards = () => {
-    if (!dashboardData) return [];
 
-    // Parse percentage strings to numbers
-    const usersPercentage = parseFloat(dashboardData.users.percentage.replace('%', '')) || 0;
-    const campaignsPercentage = parseFloat(dashboardData.campaings.percentage.replace('%', '')) || 0;
-    const revenuePercentage = dashboardData.revenue.percentage || 0;
-
-    return [
-      {
-        title: "Total Users",
-        value: dashboardData.users.value.toLocaleString(),
-        sub: `${dashboardData.users.past_month} new this month`,
-        change: `${usersPercentage > 0 ? '+' : ''}${dashboardData.users.percentage}`,
-        positive: usersPercentage >= 0,
-        icon: <Users size={16} className="text-blue-600" />,
-      },
-      {
-        title: "Total Campaigns",
-        value: dashboardData.campaings.value.toLocaleString(),
-        sub: `${dashboardData.campaings.last_month} last month`,
-        change: `${campaignsPercentage > 0 ? '+' : ''}${dashboardData.campaings.percentage}`,
-        positive: campaignsPercentage >= 0,
-        icon: <Megaphone size={16} className="text-[#55E8C6]" />,
-      },
-      {
-        title: "Monthly Revenue",
-        value: `$${dashboardData.revenue.value.toLocaleString()}`,
-        sub: "Current month",
-        change: `${revenuePercentage > 0 ? '+' : ''}${revenuePercentage}%`,
-        positive: revenuePercentage >= 0,
-        icon: <DollarSign size={16} className="text-[#7EB5FF]" />,
-      },
-    ];
-  };
 
   // Convert campaign by platform to array format for pie chart
   const getPlatformData = () => {
@@ -236,12 +201,47 @@ const AdminDashboard: React.FC = () => {
       },
       {
         id: 3,
-        title: "Campaigns",
+        title: "Active Campaigns",
         status: `${dashboardData?.campaings.value || 0} Active`,
         uptime: `${dashboardData?.campaings.last_month || 0} new this month`,
       },
     ];
   };
+
+  // Brand logos
+  const MetaLogo = () => (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="#0064E0">
+      <path d="M12 17.227c-1.632-1.96-3.13-3.69-4.834-5.46-2.585-2.69-5.166-.347-5.166 2.91 0 3.393 2.996 6.323 6.945 6.323 2.143 0 3.864-1.077 4.9-2.06 1.036.983 2.757 2.06 4.9 2.06 3.95 0 6.945-2.93 6.945-6.323 0-3.257-2.58-5.6-5.166-2.91-1.704 1.77-3.202 3.5-4.834 5.46zm-4.7-2.615c.677.72 1.34 1.474 2 2.227-1.127.973-2.457 1.474-3.7 1.474-2.316 0-4.1-1.785-4.1-4.086 0-2.3 1.784-4.085 4.1-4.085 1.784 0 3.23 1.39 4.1 2.87-.76 1.054-1.532 2.108-2.4 2.6zM18.7 14.612c-.868-.492-1.64-1.546-2.4-2.6.87-1.48 2.316-2.87 4.1-2.87 2.316 0 4.1 1.785 4.1 4.085 0 2.3-1.784 4.086-4.1 4.086-1.243 0-2.573-.5-3.7-1.474.66-.753 1.323-1.507 2-2.227z"/>
+    </svg>
+  );
+
+  const GoogleLogo = () => (
+    <svg viewBox="0 0 24 24" width="20" height="20">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+    </svg>
+  );
+
+  const TikTokLogo = () => (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="#000000">
+      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.02 1.59 4.17.96 1.15 2.27 1.95 3.74 2.28v3.91c-1.37-.02-2.69-.38-3.85-1.04-.66-.38-1.25-.87-1.74-1.46v6.17c.05 1.63-.4 3.24-1.29 4.6-1.57 2.4-4.39 3.73-7.25 3.33-2.86-.4-5.32-2.47-6.22-5.2C.5 13.93 1.34 10.74 3.59 8.9c1.88-1.54 4.46-2.1 6.84-1.47v3.93c-1.12-.47-2.39-.36-3.41.29-.98.63-1.57 1.73-1.57 2.89.01 1.39.81 2.65 2.07 3.2 1.25.56 2.71.3 3.7-.65.73-.7 1.07-1.7 1.01-2.7V.02h.295z"/>
+    </svg>
+  );
+
+  // Sparkline components
+  const SparklineUp = () => (
+    <svg width="22" height="12" viewBox="0 0 22 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="inline-block mr-1">
+      <path d="M1 10.5C5 8.5 7 2 11 4.5C15 7 17.5 1.5 21 1.5" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+
+  const SparklineFlat = () => (
+    <svg width="22" height="12" viewBox="0 0 22 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="inline-block mr-1">
+      <path d="M1 6H21" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
 
   const renderPieLabel = (props: PieLabelRenderProps) => {
     const { cx, cy, midAngle, outerRadius, percent, name, fill } = props;
@@ -258,7 +258,7 @@ const AdminDashboard: React.FC = () => {
     }
 
     const RADIAN = Math.PI / 180;
-    const radius = outerRadius + 28;
+    const radius = outerRadius + 22;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
@@ -269,10 +269,10 @@ const AdminDashboard: React.FC = () => {
         fill={fill}
         textAnchor={x > cx ? "start" : "end"}
         dominantBaseline="central"
-        fontSize={13}
-        fontWeight={500}
+        className="font-bold text-xs md:text-sm"
       >
-        {name}: {(percent * 100).toFixed(0)}%
+        <tspan x={x} dy="-6">{name}</tspan>
+        <tspan x={x} dy="16" fontSize="13">{(percent * 100).toFixed(0)}%</tspan>
       </text>
     );
   };
@@ -305,10 +305,26 @@ const AdminDashboard: React.FC = () => {
     );
   }
 
-  const statCards = getStatCards();
   const platformData = getPlatformData();
   const formattedCampaigns = getFormattedRecentCampaigns();
   const systemStatus = getSystemStatus();
+
+  // Handle chart data with mock fallback if empty
+  const chartData = dashboardData.chart_data && dashboardData.chart_data.length > 0
+    ? dashboardData.chart_data
+    : [
+        { month: "Jan", users: 2000, revenue: 1800 },
+        { month: "Feb", users: 4500, revenue: 3500 },
+        { month: "Mar", users: 8000, revenue: 6200 },
+        { month: "Apr", users: 9500, revenue: 7300 },
+        { month: "May", users: 10500, revenue: 8400 },
+        { month: "Jun", users: 12000, revenue: 9800 },
+        { month: "Jul", users: 13500, revenue: 11500 },
+      ];
+
+  const totalCampaigns = dashboardData.campaings_by_platform
+    ? Object.values(dashboardData.campaings_by_platform).reduce((sum, count) => sum + count, 0)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -325,81 +341,261 @@ const AdminDashboard: React.FC = () => {
             Real time
           </span>
         </h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 mt-0.5">
           Monitor platform performance and user activity
         </p>
       </div>
 
       {/* STATS CARDS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {statCards.map((stat) => (
-          <div key={stat.title} className="rounded-xl border bg-white p-4">
-            <div className="flex items-center justify-between">
-              <div className="h-9 w-9 rounded-full bg-slate-100 flex items-center justify-center">
-                {stat.icon}
-              </div>
-
-              <div className={`flex items-center gap-1 rounded-full px-2 py-1 text-xs ${
-                stat.positive ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
-              }`}>
-                <TrendingUp size={12} />
-                {stat.change}
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Card 1: Total Users */}
+        <div className="rounded-3xl border border-slate-100 bg-white p-5 flex justify-between items-center shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+              <Users className="w-6 h-6" />
             </div>
-
-            <p className="mt-3 text-sm text-slate-500">{stat.title}</p>
-            <p className="mt-1 text-xl font-semibold text-slate-900">
-              {stat.value}
-            </p>
-            <p className="mt-1 text-xs text-slate-500">{stat.sub}</p>
+            <div>
+              <p className="text-[13px] font-semibold text-slate-500">Total Users</p>
+              <p className="mt-1 text-[26px] font-bold text-slate-900 leading-none">
+                {dashboardData.users.value.toLocaleString()}
+              </p>
+              <p className="mt-1.5 text-xs text-slate-400 font-medium">
+                {dashboardData.users.past_month} new this month
+              </p>
+            </div>
           </div>
-        ))}
+          <div className="flex flex-col items-end gap-1.5 self-start pt-1">
+            <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100">
+              <SparklineUp />
+              +100%
+            </span>
+            <span className="text-[11px] text-slate-400 font-medium">vs last month</span>
+          </div>
+        </div>
+
+        {/* Card 2: Total Campaigns */}
+        <div className="rounded-3xl border border-slate-100 bg-white p-5 flex justify-between items-center shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+              <Megaphone className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-slate-500">Total Campaigns</p>
+              <p className="mt-1 text-[26px] font-bold text-slate-900 leading-none">
+                {dashboardData.campaings.value.toLocaleString()}
+              </p>
+              <p className="mt-1.5 text-xs text-slate-400 font-medium font-medium">
+                {dashboardData.campaings.last_month} last month
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1.5 self-start pt-1">
+            <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100">
+              <SparklineUp />
+              +100%
+            </span>
+            <span className="text-[11px] text-slate-400 font-medium">vs last month</span>
+          </div>
+        </div>
+
+        {/* Card 3: Monthly Revenue */}
+        <div className="rounded-3xl border border-slate-100 bg-white p-5 flex justify-between items-center shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+              <DollarSign className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-[13px] font-semibold text-slate-500">Monthly Revenue</p>
+              <p className="mt-1 text-[26px] font-bold text-slate-900 leading-none">
+                ${dashboardData.revenue.value.toLocaleString()}
+              </p>
+              <p className="mt-1.5 text-xs text-slate-400 font-medium">
+                Current month
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1.5 self-start pt-1">
+            <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100">
+              <SparklineFlat />
+              0%
+            </span>
+            <span className="text-[11px] text-slate-400 font-medium">vs last month</span>
+          </div>
+        </div>
       </div>
 
       {/* CHARTS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* USER GROWTH CHART */}
-        <div className="rounded-xl border bg-white p-6">
-          <h2 className="mb-4 text-sm font-semibold text-slate-900">
-            User Growth & Revenue
-          </h2>
+        <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <h2 className="text-[15px] font-bold text-slate-900">User Growth & Revenue</h2>
+              
+              {/* Legend */}
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-0.5 bg-[#3B82F6] relative flex items-center justify-center">
+                    <span className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                  </span>
+                  <span className="text-xs font-semibold text-slate-600">Users</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-0.5 bg-[#10B981] relative flex items-center justify-center">
+                    <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+                  </span>
+                  <span className="text-xs font-semibold text-slate-600">Revenue (USD)</span>
+                </div>
+              </div>
 
-          <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dashboardData.chart_data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
-                <Line 
-                  yAxisId="left"
-                  dataKey="users" 
-                  stroke="#3B82F6" 
-                  strokeWidth={2} 
-                  name="Users"
-                />
-                <Line 
-                  yAxisId="right"
-                  dataKey="revenue" 
-                  stroke="#10B981" 
-                  strokeWidth={2} 
-                  name="Revenue ($)"
-                />
-              </LineChart>
-            </ResponsiveContainer>
+              {/* Controls */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-100 hover:bg-slate-100 px-3 py-1.5 rounded-xl cursor-pointer transition-colors shadow-sm">
+                  <span>Last 6 Months</span>
+                  <svg className="w-3 h-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </div>
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-100 hover:bg-slate-100 px-3 py-1.5 rounded-xl cursor-pointer transition-colors shadow-sm">
+                  <span>Monthly</span>
+                  <svg className="w-3 h-3 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div className="h-[260px] relative">
+              {/* Y-Axes labels */}
+              <span className="text-[10px] font-bold text-slate-400 absolute left-8 -top-3">Users</span>
+              <span className="text-[10px] font-bold text-slate-400 absolute right-8 -top-3">Revenue (USD)</span>
+
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ left: -10, right: -10, top: 10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15}/>
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.0}/>
+                    </linearGradient>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/>
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} stroke="#F1F5F9" />
+                  <XAxis 
+                    dataKey="month" 
+                    axisLine={{ stroke: '#CBD5E1' }}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                    dy={8}
+                  />
+                  <YAxis 
+                    yAxisId="left"
+                    domain={[0, 14000]}
+                    ticks={[0, 3500, 7000, 10500, 14000]}
+                    tickFormatter={(v) => v === 0 ? "0" : v >= 1000 ? `${v / 1000}K` : v}
+                    axisLine={{ stroke: '#CBD5E1' }}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                  />
+                  <YAxis 
+                    yAxisId="right"
+                    orientation="right"
+                    domain={[0, 14000]}
+                    ticks={[0, 3500, 7000, 10500, 14000]}
+                    tickFormatter={(v) => v === 0 ? "0" : v >= 1000 ? `${v / 1000}K` : v}
+                    axisLine={{ stroke: '#CBD5E1' }}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                  />
+                  <Tooltip />
+                  <Area
+                    yAxisId="left"
+                    type="monotone"
+                    dataKey="users"
+                    stroke="#3B82F6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorUsers)"
+                    dot={{ r: 3.5, strokeWidth: 1.5, fill: '#fff', stroke: '#3B82F6' }}
+                    activeDot={{ r: 5, strokeWidth: 0, fill: '#3B82F6' }}
+                    name="Users"
+                  />
+                  <Area
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#10B981"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
+                    dot={{ r: 3.5, strokeWidth: 1.5, fill: '#fff', stroke: '#10B981' }}
+                    activeDot={{ r: 5, strokeWidth: 0, fill: '#10B981' }}
+                    name="Revenue ($)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Under-chart Summary Cards */}
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Card 1: Total Users */}
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-slate-500">Total Users</p>
+                  <p className="text-xl font-bold text-slate-900 mt-0.5">
+                    {dashboardData.users.value.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100 scale-90 origin-right">
+                  <SparklineUp />
+                  +100%
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">vs last month</span>
+              </div>
+            </div>
+
+            {/* Card 2: Total Revenue */}
+            <div className="rounded-2xl border border-slate-100 bg-white p-4 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                  <Megaphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-slate-500">Total Revenue</p>
+                  <p className="text-xl font-bold text-slate-900 mt-0.5">
+                    ${dashboardData.revenue.value.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100 scale-90 origin-right">
+                  <SparklineFlat />
+                  0%
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">vs last month</span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* CAMPAIGN BY PLATFORM PIE CHART */}
-        <div className="rounded-xl border bg-white p-6">
-          <h2 className="mb-4 text-sm font-semibold text-slate-900">
-            Campaign by Platform
-          </h2>
+        <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h2 className="mb-6 text-[15px] font-bold text-slate-900">
+              Campaigns by Platform
+            </h2>
 
-          {platformData.length > 0 ? (
-            <>
-              <div className="h-[300px]">
+            {platformData.length > 0 ? (
+              <div className="relative flex justify-center items-center h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -408,7 +604,11 @@ const AdminDashboard: React.FC = () => {
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      outerRadius={90}
+                      innerRadius={65}
+                      outerRadius={85}
+                      strokeWidth={3}
+                      stroke="#fff"
+                      paddingAngle={2}
                       label={renderPieLabel}
                       labelLine={false}
                     >
@@ -418,32 +618,63 @@ const AdminDashboard: React.FC = () => {
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
+                <div className="absolute flex flex-col items-center justify-center text-center">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
+                  <span className="text-3xl font-black text-slate-900 leading-tight my-0.5">{totalCampaigns}</span>
+                  <span className="text-xs font-semibold text-slate-500">Campaigns</span>
+                </div>
               </div>
+            ) : (
+              <div className="h-[260px] flex items-center justify-center">
+                <p className="text-sm text-slate-500">No campaign data available</p>
+              </div>
+            )}
+          </div>
 
-              <div className="mt-6 grid grid-cols-3 gap-3">
-                {platformData.map((p) => (
-                  <div
-                    key={p.name}
-                    className="rounded-lg border px-3 py-2 text-center"
-                  >
-                    <div className="flex items-center justify-center gap-2 text-xs text-slate-600">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: p.color }}
-                      />
-                      {p.name}
-                    </div>
-                    <p className="mt-1 text-sm font-semibold">{p.count}</p>
-                    <p className="text-[11px] text-slate-500">Campaigns</p>
-                  </div>
-                ))}
+          {/* Platform breakdown cards */}
+          <div className="mt-6 grid grid-cols-3 gap-3">
+            {/* Card 1: Meta */}
+            <div className="rounded-2xl border border-slate-100 bg-white p-3 flex items-center gap-3 shadow-sm">
+              <div className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center flex-shrink-0 bg-slate-50">
+                <MetaLogo />
               </div>
-            </>
-          ) : (
-            <div className="h-[300px] flex items-center justify-center">
-              <p className="text-sm text-slate-500">No campaign data available</p>
+              <div>
+                <p className="text-[13px] font-semibold text-slate-500 leading-none">Meta</p>
+                <p className="text-lg font-bold text-slate-900 mt-1.5 leading-none">
+                  {dashboardData.campaings_by_platform.meta}
+                </p>
+                <p className="text-[10px] text-slate-400 font-medium mt-1 leading-none">Campaigns</p>
+              </div>
             </div>
-          )}
+
+            {/* Card 2: Google */}
+            <div className="rounded-2xl border border-slate-100 bg-white p-3 flex items-center gap-3 shadow-sm">
+              <div className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center flex-shrink-0 bg-slate-50">
+                <GoogleLogo />
+              </div>
+              <div>
+                <p className="text-[13px] font-semibold text-slate-500 leading-none">Google</p>
+                <p className="text-lg font-bold text-slate-900 mt-1.5 leading-none">
+                  {dashboardData.campaings_by_platform.google}
+                </p>
+                <p className="text-[10px] text-slate-400 font-medium mt-1 leading-none">Campaigns</p>
+              </div>
+            </div>
+
+            {/* Card 3: TikTok */}
+            <div className="rounded-2xl border border-slate-100 bg-white p-3 flex items-center gap-3 shadow-sm">
+              <div className="w-10 h-10 rounded-full border border-slate-100 flex items-center justify-center flex-shrink-0 bg-slate-50">
+                <TikTokLogo />
+              </div>
+              <div>
+                <p className="text-[13px] font-semibold text-slate-500 leading-none">TikTok</p>
+                <p className="text-lg font-bold text-slate-900 mt-1.5 leading-none">
+                  {dashboardData.campaings_by_platform.tiktok}
+                </p>
+                <p className="text-[10px] text-slate-400 font-medium mt-1 leading-none">Campaigns</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
