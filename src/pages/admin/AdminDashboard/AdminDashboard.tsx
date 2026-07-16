@@ -31,31 +31,22 @@ interface CampaignByPlatform {
   tiktok: number;
 }
 
+interface TrendData {
+  direction: "up" | "down" | "neutral";
+  sparkline: number[];
+}
+
 interface RecentCampaign {
   id: number;
   name: string;
-  objective: string;
-  platforms: string[];
-  matrics: {
-    impressions: number;
-    clicks: number;
-    ctr: number;
-    conversions: number;
-    roas: number;
-    cpc: number;
-    cpm: number;
-    cpa: number;
-  };
-  ads: any[];
-  audience_targeting: any;
   status: string;
+  platforms: string[];
   created_at: string;
-  ai_insights: any[];
-  total_budget: number;
-  total_spent: number;
-  remaining_budget: number;
-  budgets: any[];
-  file_url: string | null;
+}
+
+interface SystemStatusItem {
+  status: string;
+  uptime_percent: number;
 }
 
 interface DashboardResponse {
@@ -63,19 +54,26 @@ interface DashboardResponse {
     value: number;
     past_month: number;
     percentage: string;
+    trend?: TrendData;
   };
   campaings: {
     value: number;
     last_month: number;
     percentage: string;
+    trend?: TrendData;
   };
   revenue: {
     value: number;
     percentage: number;
+    trend?: TrendData;
   };
   chart_data: ChartDataPoint[];
   campaings_by_platform: CampaignByPlatform;
   recent_campaigns: RecentCampaign[];
+  system_status?: {
+    api: SystemStatusItem;
+    database: SystemStatusItem;
+  };
 }
 
 // Default colors for platforms
@@ -178,7 +176,6 @@ const AdminDashboard: React.FC = () => {
         userEmail: `Campaign ID: ${campaign.id}`,
         timeAgo: timeAgo,
         status: displayStatus,
-        amount: campaign.total_budget > 0 ? `$${campaign.total_budget}` : undefined,
         platform: platform
       };
     });
@@ -186,18 +183,19 @@ const AdminDashboard: React.FC = () => {
 
   // Create system status from API data
   const getSystemStatus = () => {
+    const apiStatus = dashboardData?.system_status;
     return [
       {
         id: 1,
         title: "API Status",
-        status: "Operational",
-        uptime: "Uptime: 99.9%",
+        status: apiStatus?.api?.status === "operational" ? "Operational" : (apiStatus?.api?.status || "Operational"),
+        uptime: `Uptime: ${apiStatus?.api?.uptime_percent ?? 99.9}%`,
       },
       {
         id: 2,
         title: "Database",
-        status: "Operational", 
-        uptime: "Uptime: 100%",
+        status: apiStatus?.database?.status === "operational" ? "Operational" : (apiStatus?.database?.status || "Operational"),
+        uptime: `Uptime: ${apiStatus?.database?.uptime_percent ?? 100}%`,
       },
       {
         id: 3,
@@ -210,8 +208,8 @@ const AdminDashboard: React.FC = () => {
 
   // Brand logos
   const MetaLogo = () => (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="#0064E0">
-      <path d="M12 17.227c-1.632-1.96-3.13-3.69-4.834-5.46-2.585-2.69-5.166-.347-5.166 2.91 0 3.393 2.996 6.323 6.945 6.323 2.143 0 3.864-1.077 4.9-2.06 1.036.983 2.757 2.06 4.9 2.06 3.95 0 6.945-2.93 6.945-6.323 0-3.257-2.58-5.6-5.166-2.91-1.704 1.77-3.202 3.5-4.834 5.46zm-4.7-2.615c.677.72 1.34 1.474 2 2.227-1.127.973-2.457 1.474-3.7 1.474-2.316 0-4.1-1.785-4.1-4.086 0-2.3 1.784-4.085 4.1-4.085 1.784 0 3.23 1.39 4.1 2.87-.76 1.054-1.532 2.108-2.4 2.6zM18.7 14.612c-.868-.492-1.64-1.546-2.4-2.6.87-1.48 2.316-2.87 4.1-2.87 2.316 0 4.1 1.785 4.1 4.085 0 2.3-1.784 4.086-4.1 4.086-1.243 0-2.573-.5-3.7-1.474.66-.753 1.323-1.507 2-2.227z"/>
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="#1877F2">
+      <path d="M9.101 23.656V12.234H5.721V8.472h3.38V5.607c0-3.292 2.002-5.084 4.935-5.084 1.405 0 2.612.104 2.964.15v3.437h-2.035c-1.597 0-1.905.76-1.905 1.87v2.45h3.805l-.493 3.762h-3.312v11.464H9.101z"/>
     </svg>
   );
 
@@ -230,18 +228,62 @@ const AdminDashboard: React.FC = () => {
     </svg>
   );
 
-  // Sparkline components
-  const SparklineUp = () => (
-    <svg width="22" height="12" viewBox="0 0 22 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="inline-block mr-1">
-      <path d="M1 10.5C5 8.5 7 2 11 4.5C15 7 17.5 1.5 21 1.5" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
+  // Dynamic sparkline component that renders from API data points
+  const DynamicSparkline = ({ data, color = "#10B981" }: { data?: number[]; color?: string }) => {
+    if (!data || data.length < 2) {
+      // Flat line fallback
+      return (
+        <svg width="22" height="12" viewBox="0 0 22 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="inline-block mr-1">
+          <path d="M1 6H21" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+    }
 
-  const SparklineFlat = () => (
-    <svg width="22" height="12" viewBox="0 0 22 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="inline-block mr-1">
-      <path d="M1 6H21" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
+    const width = 22;
+    const height = 12;
+    const padding = 1;
+    const max = Math.max(...data, 1);
+    const min = Math.min(...data, 0);
+    const range = max - min || 1;
+
+    const points = data.map((val, i) => {
+      const x = padding + (i / (data.length - 1)) * (width - 2 * padding);
+      const y = height - padding - ((val - min) / range) * (height - 2 * padding);
+      return `${x} ${y}`;
+    });
+
+    return (
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} fill="none" xmlns="http://www.w3.org/2000/svg" className="inline-block mr-1">
+        <polyline
+          points={points.join(", ")}
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </svg>
+    );
+  };
+
+  // Helper to get trend badge styles and text from API data
+  const getTrendBadge = (percentage: string | number, direction?: string) => {
+    const pctStr = typeof percentage === 'number' ? `${percentage}%` : percentage;
+    const isUp = direction === 'up';
+    const isDown = direction === 'down';
+    const isNeutral = !isUp && !isDown;
+
+    const bgClass = isDown
+      ? 'bg-red-50 text-red-600 border-red-100'
+      : isNeutral
+        ? 'bg-slate-50 text-slate-500 border-slate-100'
+        : 'bg-green-50 text-green-600 border-green-100';
+
+    const color = isDown ? '#EF4444' : isNeutral ? '#64748B' : '#10B981';
+    const prefix = isUp && !pctStr.startsWith('+') && !pctStr.startsWith('-') ? '+' : '';
+
+    return { bgClass, displayText: `${prefix}${pctStr}`, color };
+  };
 
   const renderPieLabel = (props: PieLabelRenderProps) => {
     const { cx, cy, midAngle, outerRadius, percent, name, fill } = props;
@@ -309,18 +351,10 @@ const AdminDashboard: React.FC = () => {
   const formattedCampaigns = getFormattedRecentCampaigns();
   const systemStatus = getSystemStatus();
 
-  // Handle chart data with mock fallback if empty
+  // Use chart data directly from API (backend now always returns populated data)
   const chartData = dashboardData.chart_data && dashboardData.chart_data.length > 0
     ? dashboardData.chart_data
-    : [
-        { month: "Jan", users: 2000, revenue: 1800 },
-        { month: "Feb", users: 4500, revenue: 3500 },
-        { month: "Mar", users: 8000, revenue: 6200 },
-        { month: "Apr", users: 9500, revenue: 7300 },
-        { month: "May", users: 10500, revenue: 8400 },
-        { month: "Jun", users: 12000, revenue: 9800 },
-        { month: "Jul", users: 13500, revenue: 11500 },
-      ];
+    : [];
 
   const totalCampaigns = dashboardData.campaings_by_platform
     ? Object.values(dashboardData.campaings_by_platform).reduce((sum, count) => sum + count, 0)
@@ -349,79 +383,95 @@ const AdminDashboard: React.FC = () => {
       {/* STATS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: Total Users */}
-        <div className="rounded-3xl border border-slate-100 bg-white p-5 flex justify-between items-center shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-              <Users className="w-6 h-6" />
+        {(() => {
+          const userTrend = getTrendBadge(dashboardData.users.percentage, dashboardData.users.trend?.direction);
+          return (
+            <div className="rounded-3xl border border-slate-100 bg-white p-5 flex justify-between items-center shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-slate-500">Total Users</p>
+                  <p className="mt-1 text-[26px] font-bold text-slate-900 leading-none">
+                    {dashboardData.users.value.toLocaleString()}
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-400 font-medium">
+                    {dashboardData.users.past_month} new this month
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1.5 self-start pt-1">
+                <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${userTrend.bgClass}`}>
+                  <DynamicSparkline data={dashboardData.users.trend?.sparkline} color={userTrend.color} />
+                  {userTrend.displayText}
+                </span>
+                <span className="text-[11px] text-slate-400 font-medium">vs last month</span>
+              </div>
             </div>
-            <div>
-              <p className="text-[13px] font-semibold text-slate-500">Total Users</p>
-              <p className="mt-1 text-[26px] font-bold text-slate-900 leading-none">
-                {dashboardData.users.value.toLocaleString()}
-              </p>
-              <p className="mt-1.5 text-xs text-slate-400 font-medium">
-                {dashboardData.users.past_month} new this month
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1.5 self-start pt-1">
-            <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100">
-              <SparklineUp />
-              +100%
-            </span>
-            <span className="text-[11px] text-slate-400 font-medium">vs last month</span>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Card 2: Total Campaigns */}
-        <div className="rounded-3xl border border-slate-100 bg-white p-5 flex justify-between items-center shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-              <Megaphone className="w-6 h-6" />
+        {(() => {
+          const campTrend = getTrendBadge(dashboardData.campaings.percentage, dashboardData.campaings.trend?.direction);
+          return (
+            <div className="rounded-3xl border border-slate-100 bg-white p-5 flex justify-between items-center shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                  <Megaphone className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-slate-500">Total Campaigns</p>
+                  <p className="mt-1 text-[26px] font-bold text-slate-900 leading-none">
+                    {dashboardData.campaings.value.toLocaleString()}
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-400 font-medium">
+                    {dashboardData.campaings.last_month} last month
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1.5 self-start pt-1">
+                <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${campTrend.bgClass}`}>
+                  <DynamicSparkline data={dashboardData.campaings.trend?.sparkline} color={campTrend.color} />
+                  {campTrend.displayText}
+                </span>
+                <span className="text-[11px] text-slate-400 font-medium">vs last month</span>
+              </div>
             </div>
-            <div>
-              <p className="text-[13px] font-semibold text-slate-500">Total Campaigns</p>
-              <p className="mt-1 text-[26px] font-bold text-slate-900 leading-none">
-                {dashboardData.campaings.value.toLocaleString()}
-              </p>
-              <p className="mt-1.5 text-xs text-slate-400 font-medium font-medium">
-                {dashboardData.campaings.last_month} last month
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1.5 self-start pt-1">
-            <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100">
-              <SparklineUp />
-              +100%
-            </span>
-            <span className="text-[11px] text-slate-400 font-medium">vs last month</span>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Card 3: Monthly Revenue */}
-        <div className="rounded-3xl border border-slate-100 bg-white p-5 flex justify-between items-center shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-              <DollarSign className="w-6 h-6" />
+        {(() => {
+          const revPct = dashboardData.revenue.percentage;
+          const revTrend = getTrendBadge(`${revPct}%`, dashboardData.revenue.trend?.direction);
+          return (
+            <div className="rounded-3xl border border-slate-100 bg-white p-5 flex justify-between items-center shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                  <DollarSign className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-slate-500">Monthly Revenue</p>
+                  <p className="mt-1 text-[26px] font-bold text-slate-900 leading-none">
+                    ${dashboardData.revenue.value.toLocaleString()}
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-400 font-medium">
+                    Current month
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1.5 self-start pt-1">
+                <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${revTrend.bgClass}`}>
+                  <DynamicSparkline data={dashboardData.revenue.trend?.sparkline} color={revTrend.color} />
+                  {revTrend.displayText}
+                </span>
+                <span className="text-[11px] text-slate-400 font-medium">vs last month</span>
+              </div>
             </div>
-            <div>
-              <p className="text-[13px] font-semibold text-slate-500">Monthly Revenue</p>
-              <p className="mt-1 text-[26px] font-bold text-slate-900 leading-none">
-                ${dashboardData.revenue.value.toLocaleString()}
-              </p>
-              <p className="mt-1.5 text-xs text-slate-400 font-medium">
-                Current month
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1.5 self-start pt-1">
-            <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100">
-              <SparklineFlat />
-              0%
-            </span>
-            <span className="text-[11px] text-slate-400 font-medium">vs last month</span>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {/* CHARTS */}
@@ -542,48 +592,59 @@ const AdminDashboard: React.FC = () => {
           {/* Under-chart Summary Cards */}
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Card 1: Total Users */}
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                  <Users className="w-5 h-5" />
+            {(() => {
+              const userTrend = getTrendBadge(dashboardData.users.percentage, dashboardData.users.trend?.direction);
+              return (
+                <div className="rounded-2xl border border-slate-100 bg-white p-4 flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-slate-500">Total Users</p>
+                      <p className="text-xl font-bold text-slate-900 mt-0.5">
+                        {dashboardData.users.value.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border scale-90 origin-right ${userTrend.bgClass}`}>
+                      <DynamicSparkline data={dashboardData.users.trend?.sparkline} color={userTrend.color} />
+                      {userTrend.displayText}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">vs last month</span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[13px] font-semibold text-slate-500">Total Users</p>
-                  <p className="text-xl font-bold text-slate-900 mt-0.5">
-                    {dashboardData.users.value.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100 scale-90 origin-right">
-                  <SparklineUp />
-                  +100%
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">vs last month</span>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Card 2: Total Revenue */}
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
-                  <Megaphone className="w-5 h-5" />
+            {(() => {
+              const revPct = dashboardData.revenue.percentage;
+              const revTrend = getTrendBadge(`${revPct}%`, dashboardData.revenue.trend?.direction);
+              return (
+                <div className="rounded-2xl border border-slate-100 bg-white p-4 flex items-center justify-between shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="h-12 w-12 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                      <Megaphone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-semibold text-slate-500">Total Revenue</p>
+                      <p className="text-xl font-bold text-slate-900 mt-0.5">
+                        ${dashboardData.revenue.value.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border scale-90 origin-right ${revTrend.bgClass}`}>
+                      <DynamicSparkline data={dashboardData.revenue.trend?.sparkline} color={revTrend.color} />
+                      {revTrend.displayText}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">vs last month</span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[13px] font-semibold text-slate-500">Total Revenue</p>
-                  <p className="text-xl font-bold text-slate-900 mt-0.5">
-                    ${dashboardData.revenue.value.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="flex items-center gap-1 bg-green-50 text-green-600 text-xs font-semibold px-2 py-0.5 rounded-full border border-green-100 scale-90 origin-right">
-                  <SparklineFlat />
-                  0%
-                </span>
-                <span className="text-[10px] text-slate-400 font-medium">vs last month</span>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
 
