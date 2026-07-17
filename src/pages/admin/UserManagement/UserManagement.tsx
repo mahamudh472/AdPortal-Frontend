@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   UserPlus,
-  SlidersHorizontal,
   Calendar,
   Clock,
   ChevronDown,
@@ -82,12 +81,30 @@ const fetchUserStats = async (): Promise<UserStats> => {
 };
 
 // Updated fetchUserList with better error handling
-const fetchUserList = async (page: number, search?: string): Promise<UserListResponse> => {
+const fetchUserList = async (
+  page: number, 
+  search?: string, 
+  status?: string, 
+  role?: string,
+  pageSize?: number
+): Promise<UserListResponse> => {
   let url = `/admin/user-management-list/?page=${page}`;
   
   if (search && search.trim()) {
     const encodedSearch = encodeURIComponent(search.trim());
     url += `&search=${encodedSearch}`;
+  }
+  
+  if (status && status !== 'All Status') {
+    url += `&status=${encodeURIComponent(status.toLowerCase())}`;
+  }
+  
+  if (role && role !== 'All Roles') {
+    url += `&role=${encodeURIComponent(role.toLowerCase())}`;
+  }
+
+  if (pageSize) {
+    url += `&page_size=${pageSize}`;
   }
   
   try {
@@ -163,6 +180,21 @@ const transformApiUser = (apiUser: ApiUser, index: number): UserItem => {
     }
   };
 
+  const mapRole = (apiRole?: string, email?: string, isAdmin?: boolean): "Admin" | "User" => {
+    if (apiRole) {
+      const normalized = apiRole.toLowerCase();
+      if (normalized === 'admin' || normalized === 'owner') {
+        return 'Admin';
+      }
+      return 'User';
+    }
+    const e = email?.toLowerCase().trim() || "";
+    if (e === "info.mahmudh473@gmail.com" || e === "admin@mail.com" || e === "copperstainna@deltajohnsons.com" || isAdmin) {
+      return 'Admin';
+    }
+    return 'User';
+  };
+
   return {
     id: apiUser.id || `${apiUser.email}-${index}`,
     name: getName(),
@@ -175,6 +207,7 @@ const transformApiUser = (apiUser: ApiUser, index: number): UserItem => {
     joined: formatDate(apiUser.joined_at),
     lastActive: getLastActive(),
     isAdmin: apiUser.is_admin || false,
+    role: mapRole(apiUser.role, apiUser.email, apiUser.is_admin),
   };
 };
 
@@ -182,16 +215,15 @@ const transformApiUser = (apiUser: ApiUser, index: number): UserItem => {
    COMPONENT
  ========================= */
 
-const ITEMS_PER_PAGE = 10;
-
 const UserManagement: React.FC = () => {
   const [currentAdminEmail, setCurrentAdminEmail] = useState<string>("");
   const [users, setUsers] = useState<UserItem[]>([]);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [stats, setStats] = useState<UserStats>({
-    total_users: { value: 0, last_week: 0 },
-    active_users: 0,
-    suspended_users: 0,
-    trial_users: 0,
+    total_users: { value: 0, last_week: 0, trend_percentage: "0%", trend_direction: "neutral" },
+    active_users: { value: 0, previous_period: 0, trend_percentage: "0%", trend_direction: "neutral" },
+    suspended_users: { value: 0, previous_period: 0, trend_percentage: "0%", trend_direction: "neutral" },
+    trial_users: { value: 0, previous_period: 0, trend_percentage: "0%", trend_direction: "neutral" },
   });
   
   const [page, setPage] = useState<number>(1);
@@ -215,7 +247,7 @@ const UserManagement: React.FC = () => {
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
-  const [inviteRole, setInviteRole] = useState<"Admin" | "Manager" | "Member" | "Owner">("Member");
+  const [inviteRole, setInviteRole] = useState<"Admin" | "User">("User");
   const [inviting, setInviting] = useState(false);
   
   // Refs
@@ -256,7 +288,7 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     loadUsers();
-  }, [page, searchTerm]);
+  }, [page, searchTerm, statusFilter, roleFilter, pageSize]);
 
   const loadStats = async () => {
     setStatsLoading(true);
@@ -274,7 +306,7 @@ const UserManagement: React.FC = () => {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      const data = await fetchUserList(page, searchTerm);
+      const data = await fetchUserList(page, searchTerm, statusFilter, roleFilter, pageSize);
       const transformedUsers = data.results.map((apiUser, index) => 
         transformApiUser(apiUser, index)
       );
@@ -353,7 +385,7 @@ const UserManagement: React.FC = () => {
   const goToNextPage = () => {
     if (nextPage) {
       const nextPageNum = page + 1;
-      if (nextPageNum <= Math.ceil(totalCount / ITEMS_PER_PAGE)) {
+      if (nextPageNum <= Math.ceil(totalCount / pageSize)) {
         setPage(nextPageNum);
       }
     }
@@ -365,7 +397,7 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   const getPageNumbers = () => {
     if (totalPages <= 1) return [1];
@@ -395,27 +427,8 @@ const UserManagement: React.FC = () => {
     return rangeWithDots;
   };
 
-  // Get user role dynamically (matches specific emails in user's database to screenshot)
-  const getUserRole = (email: string, isAdmin: boolean): "Admin" | "Manager" | "Member" | "Owner" => {
-    const e = email.toLowerCase().trim();
-    if (e === "info.mahmudh473@gmail.com") return "Owner";
-    if (e === "admin@mail.com" || e === "copperstainna@deltajohnsons.com") return "Admin";
-    if (e.includes("mahmud11") || e.includes("mjuvelrana")) return "Manager";
-    if (isAdmin) return "Admin";
-    return "Member";
-  };
-
-  // Filter users locally based on select filters
-  const filteredUsers = users.filter((u) => {
-    if (statusFilter !== "All Status") {
-      if (u.status !== statusFilter.toLowerCase()) return false;
-    }
-    if (roleFilter !== "All Roles") {
-      const role = getUserRole(u.email, u.isAdmin || false);
-      if (role.toLowerCase() !== roleFilter.toLowerCase()) return false;
-    }
-    return true;
-  });
+  // Users list from backend is already filtered by status and role query parameters
+  const filteredUsers = users;
 
   const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -439,7 +452,8 @@ const UserManagement: React.FC = () => {
         totalSpend: 0,
         joined: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         lastActive: "Just now",
-        isAdmin: inviteRole === "Admin"
+        isAdmin: inviteRole === "Admin",
+        role: inviteRole
       };
 
       setUsers(prev => [newUser, ...prev]);
@@ -449,7 +463,7 @@ const UserManagement: React.FC = () => {
       setIsInviteModalOpen(false);
       setInviteEmail("");
       setInviteName("");
-      setInviteRole("Member");
+      setInviteRole("User");
     } catch (err) {
       toast.error("Failed to send invitation");
     } finally {
@@ -496,30 +510,31 @@ const UserManagement: React.FC = () => {
           title="Total Users" 
           value={stats.total_users.value} 
           sub={`+${stats.total_users.last_week} this week`}
+          trend={{ text: stats.total_users.trend_percentage, type: stats.total_users.trend_direction }}
           icon={<Users className="w-6 h-6" />}
           loading={statsLoading}
         />
         <StatCard 
           title="Active Users" 
-          value={stats.active_users} 
-          sub={`${stats.total_users.value ? ((stats.active_users / stats.total_users.value) * 100).toFixed(1) : 0}% of total`} 
-          trend={{ text: "12.5%", type: "up" }}
+          value={stats.active_users.value} 
+          sub={`${stats.total_users.value ? ((stats.active_users.value / stats.total_users.value) * 100).toFixed(1) : 0}% of total`} 
+          trend={{ text: stats.active_users.trend_percentage, type: stats.active_users.trend_direction }}
           icon={<UserCheck className="w-6 h-6" />}
           loading={statsLoading}
         />
         <StatCard 
           title="Suspended" 
-          value={stats.suspended_users} 
+          value={stats.suspended_users.value} 
           sub="Requires attention" 
-          trend={{ text: "- 0%", type: "neutral" }}
+          trend={{ text: stats.suspended_users.trend_percentage, type: stats.suspended_users.trend_direction }}
           icon={<Ban className="w-6 h-6" />}
           loading={statsLoading}
         />
         <StatCard 
           title="Trial Users" 
-          value={stats.trial_users} 
+          value={stats.trial_users.value} 
           sub="Converting well" 
-          trend={{ text: "+ 0%", type: "up" }}
+          trend={{ text: stats.trial_users.trend_percentage, type: stats.trial_users.trend_direction }}
           icon={<FlaskConical className="w-6 h-6" />}
           loading={statsLoading}
         />
@@ -563,6 +578,7 @@ const UserManagement: React.FC = () => {
                     key={status}
                     onClick={() => {
                       setStatusFilter(status);
+                      setPage(1);
                       setIsStatusDropdownOpen(false);
                     }}
                     className="flex w-full items-center px-4 py-2 text-xs font-semibold hover:bg-slate-50 text-slate-700 text-left cursor-pointer"
@@ -586,11 +602,12 @@ const UserManagement: React.FC = () => {
             
             {isRoleDropdownOpen && (
               <div className="absolute right-0 mt-1.5 z-50 w-40 rounded-xl border border-slate-100 bg-white py-1 shadow-lg animate-in fade-in duration-100">
-                {["All Roles", "Admin", "Manager", "Member", "Owner"].map((role) => (
+                {["All Roles", "Admin", "User"].map((role) => (
                   <button
                     key={role}
                     onClick={() => {
                       setRoleFilter(role);
+                      setPage(1);
                       setIsRoleDropdownOpen(false);
                     }}
                     className="flex w-full items-center px-4 py-2 text-xs font-semibold hover:bg-slate-50 text-slate-700 text-left cursor-pointer"
@@ -601,12 +618,6 @@ const UserManagement: React.FC = () => {
               </div>
             )}
           </div>
-
-          {/* Filters Toggle Button */}
-          <button className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 px-4 py-2 rounded-xl cursor-pointer transition-colors shadow-sm">
-            <SlidersHorizontal size={14} className="text-slate-400" />
-            <span>Filters</span>
-          </button>
         </div>
       </div>
 
@@ -638,7 +649,7 @@ const UserManagement: React.FC = () => {
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((u) => {
                     const isCurrentAdmin = u.email === currentAdminEmail;
-                    const role = getUserRole(u.email, u.isAdmin || false);
+                    const role = u.role;
                     
                     return (
                       <tr key={u.id} className={`hover:bg-slate-50/50 transition-colors ${isCurrentAdmin ? 'bg-blue-50/20' : ''}`}>
@@ -777,10 +788,18 @@ const UserManagement: React.FC = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
           {/* Rows selector */}
           <div>
-            <select className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer shadow-sm outline-none">
-              <option>10 per page</option>
-              <option>20 per page</option>
-              <option>50 per page</option>
+            <select 
+              value={`${pageSize} per page`}
+              onChange={(e) => {
+                const val = parseInt(e.target.value.split(" ")[0]);
+                setPageSize(val);
+                setPage(1);
+              }}
+              className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer shadow-sm outline-none"
+            >
+              <option value="10 per page">10 per page</option>
+              <option value="20 per page">20 per page</option>
+              <option value="50 per page">50 per page</option>
             </select>
           </div>
 
@@ -878,10 +897,8 @@ const UserManagement: React.FC = () => {
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as any)}
                 >
-                  <option value="Member">Member</option>
-                  <option value="Manager">Manager</option>
+                  <option value="User">User</option>
                   <option value="Admin">Admin</option>
-                  <option value="Owner">Owner</option>
                 </select>
               </div>
 
@@ -1018,16 +1035,12 @@ const renderTableStatusBadge = (status: UserStatus) => {
   );
 };
 
-const roleBadgeStyle = (role: "Admin" | "Manager" | "Member" | "Owner") => {
+const roleBadgeStyle = (role: "Admin" | "User") => {
   switch (role) {
     case "Admin":
       return "bg-blue-50 text-blue-700 border-blue-100";
-    case "Manager":
-      return "bg-purple-50 text-purple-700 border-purple-100";
-    case "Member":
-      return "bg-blue-50 text-blue-700 border-blue-100";
-    case "Owner":
-      return "bg-amber-50 text-amber-700 border-amber-100";
+    case "User":
+      return "bg-slate-50 text-slate-700 border-slate-100";
     default:
       return "bg-slate-50 text-slate-700 border-slate-100";
   }

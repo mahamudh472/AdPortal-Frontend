@@ -14,6 +14,7 @@ export interface UserItem {
   joined: string;
   lastActive: string;
   isAdmin?: boolean; // Added admin flag
+  role: 'Admin' | 'User';
 }
 
 export interface ActionMenuPosition {
@@ -25,10 +26,27 @@ export interface UserStats {
   total_users: {
     value: number;
     last_week: number;
+    trend_percentage: string;
+    trend_direction: 'up' | 'down' | 'neutral';
   };
-  active_users: number;
-  suspended_users: number;
-  trial_users: number;
+  active_users: {
+    value: number;
+    previous_period: number;
+    trend_percentage: string;
+    trend_direction: 'up' | 'down' | 'neutral';
+  };
+  suspended_users: {
+    value: number;
+    previous_period: number;
+    trend_percentage: string;
+    trend_direction: 'up' | 'down' | 'neutral';
+  };
+  trial_users: {
+    value: number;
+    previous_period: number;
+    trend_percentage: string;
+    trend_direction: 'up' | 'down' | 'neutral';
+  };
 }
 
 // API Response Types
@@ -42,6 +60,7 @@ export interface ApiUser {
   is_active: boolean;
   is_suspended: boolean;
   is_admin?: boolean; // Added admin flag for API response
+  role?: string;
   subscription_tier?: string;
   campaigns_count?: number;
   total_spend?: number;
