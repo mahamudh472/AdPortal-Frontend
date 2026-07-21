@@ -24,6 +24,7 @@ import type {
   ApiReport,
   ReportListResponse,
   GenerateReportRequest,
+  IncrementDownloadResponse,
 } from "@/types/AdminReports";
 
 const METRICS: ReportMetric[] = [
@@ -110,13 +111,18 @@ const useClickOutside = (ref: React.RefObject<HTMLElement | null>, handler: () =
    API INTEGRATION
  ========================= */
 
-const fetchReports = async (page: number = 1): Promise<ReportListResponse> => {
-  const response = await api.get(`/admin/reports/?page=${page}&page_size=10`);
+const fetchReports = async (page: number = 1, pageSize: number = 10): Promise<ReportListResponse> => {
+  const response = await api.get(`/admin/reports/?page=${page}&page_size=${pageSize}`);
   return response.data;
 };
 
 const generateReport = async (data: GenerateReportRequest): Promise<ApiReport> => {
   const response = await api.post('/admin/generate-report/', data);
+  return response.data;
+};
+
+const incrementDownloadCount = async (reportId: number): Promise<IncrementDownloadResponse> => {
+  const response = await api.post(`/admin/reports/${reportId}/download/`);
   return response.data;
 };
 
@@ -143,6 +149,23 @@ const downloadReportFile = async (fileUrl: string, fileName: string) => {
    HELPERS & TRANSFORMS
  ========================= */
 
+const formatFileSize = (bytes?: number): string => {
+  if (bytes === undefined || bytes === null) return "N/A";
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
+const formatGeneratedBy = (generatedBy?: string): string => {
+  if (!generatedBy) return "Admin";
+  if (generatedBy.length > 18) {
+    return `${generatedBy.slice(0, 8)}...`;
+  }
+  return generatedBy;
+};
+
 const transformApiReport = (apiReport: ApiReport): ReportCard => {
   const name = apiReport.name || 'Untitled Report';
   const title = name.replace('.xlsx', '').replace(/_/g, ' ');
@@ -151,13 +174,16 @@ const transformApiReport = (apiReport: ApiReport): ReportCard => {
     id: apiReport.id,
     title: title,
     type: apiReport.report_type ? (apiTypeToDisplay[apiReport.report_type] || apiReport.report_type) : 'Unknown',
-    date: apiReport.created_at || new Date().toISOString(),
-    status: apiReport.status || 'PROCESSING',
+    date: apiReport.created_at || apiReport.start_date || new Date().toISOString(),
+    status: apiReport.status || 'COMPLETED',
     fileUrl: apiReport.file || '',
     fileName: apiReport.name || 'report.xlsx',
     includedMetrics: apiReport.included_metrics || [],
     startDate: apiReport.start_date,
     endDate: apiReport.end_date,
+    fileSize: apiReport.file_size,
+    downloadCount: apiReport.download_count ?? 0,
+    generatedBy: apiReport.generated_by,
   };
 };
 
@@ -270,6 +296,7 @@ const AdminReports: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [openModal, setOpenModal] = useState(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
   const [dateError, setDateError] = useState<string>("");
@@ -317,16 +344,16 @@ const AdminReports: React.FC = () => {
   useEffect(() => {
     loadReports();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage]);
+  }, [currentPage, pageSize]);
 
   const loadReports = async () => {
     setLoading(true);
     try {
-      const data = await fetchReports(currentPage);
+      const data = await fetchReports(currentPage, pageSize);
       const transformedReports = data.results.map(transformApiReport);
       setReports(transformedReports);
       setTotalCount(data.count);
-      setTotalPages(Math.ceil(data.count / 10));
+      setTotalPages(Math.ceil(data.count / pageSize));
     } catch (error) {
       console.error('Failed to fetch reports:', error);
       toast.error('Failed to load reports');
@@ -406,6 +433,29 @@ const AdminReports: React.FC = () => {
       }
       toast.loading('Downloading report...', { id: 'download' });
       await downloadReportFile(report.fileUrl, report.fileName || `${report.title}.xlsx`);
+      
+      // Increment download count on backend
+      try {
+        const res = await incrementDownloadCount(report.id);
+        setReports(prev =>
+          prev.map(item =>
+            item.id === report.id
+              ? { ...item, downloadCount: res.download_count }
+              : item
+          )
+        );
+      } catch (incErr) {
+        console.error('Failed to increment download count:', incErr);
+        // Fallback: local optimistic increment
+        setReports(prev =>
+          prev.map(item =>
+            item.id === report.id
+              ? { ...item, downloadCount: (item.downloadCount ?? 0) + 1 }
+              : item
+          )
+        );
+      }
+
       toast.success('Report downloaded successfully!', { id: 'download' });
     } catch (error) {
       console.error('Failed to download report:', error);
@@ -722,26 +772,34 @@ const AdminReports: React.FC = () => {
                         </td>
 
                         {/* Generated By */}
-                        <td className="p-4 text-center text-xs font-semibold text-slate-500">
-                          Admin
+                        <td className="p-4 text-center text-xs font-semibold text-slate-500" title={r.generatedBy}>
+                          {formatGeneratedBy(r.generatedBy)}
                         </td>
 
                         {/* Status */}
                         <td className="p-4 text-center">
-                          <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-green-50 text-green-700 border-green-100">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                            Completed
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold border ${
+                            r.status?.toUpperCase() === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-100' :
+                            r.status?.toUpperCase() === 'PROCESSING' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                            'bg-red-50 text-red-700 border-red-100'
+                          }`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${
+                              r.status?.toUpperCase() === 'COMPLETED' ? 'bg-green-500' :
+                              r.status?.toUpperCase() === 'PROCESSING' ? 'bg-amber-500' :
+                              'bg-red-500'
+                            }`} />
+                            {r.status || 'Completed'}
                           </span>
                         </td>
 
                         {/* Size */}
                         <td className="p-4 text-center text-xs font-semibold text-slate-500">
-                          {getReportSize(r.id)}
+                          {r.fileSize !== undefined ? formatFileSize(r.fileSize) : getReportSize(r.id)}
                         </td>
 
                         {/* Downloads count */}
                         <td className="p-4 text-center text-xs font-semibold text-slate-500">
-                          {getReportDownloads(r.id)}
+                          {r.downloadCount ?? getReportDownloads(r.id)}
                         </td>
 
                         {/* Actions */}
@@ -808,10 +866,17 @@ const AdminReports: React.FC = () => {
       {!loading && totalPages > 0 && filteredReports.length > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
           <div>
-            <select className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer shadow-sm outline-none">
-              <option>10 per page</option>
-              <option>20 per page</option>
-              <option>50 per page</option>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer shadow-sm outline-none"
+            >
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
             </select>
           </div>
 

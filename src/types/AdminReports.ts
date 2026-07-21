@@ -23,6 +23,9 @@ export interface ReportCard {
   includedMetrics?: string[];
   startDate?: string;
   endDate?: string;
+  fileSize?: number;
+  downloadCount?: number;
+  generatedBy?: string;
 }
 
 export interface CreateReportForm {
@@ -36,13 +39,16 @@ export interface CreateReportForm {
 export interface ApiReport {
   id: number;
   name: string;
-  created_at: string;
+  created_at?: string;
   report_type: string;
   status: string;
   included_metrics: string[];
   start_date?: string;
   end_date?: string;
   file: string;
+  file_size?: number;
+  download_count?: number;
+  generated_by?: string;
 }
 
 export interface ReportListResponse {
@@ -57,6 +63,11 @@ export interface GenerateReportRequest {
   included_metrics: string[];
   start_date?: string;
   end_date?: string;
+}
+
+export interface IncrementDownloadResponse {
+  message: string;
+  download_count: number;
 }
 
 // Component Props Types
