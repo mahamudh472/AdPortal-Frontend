@@ -221,15 +221,17 @@ class Migration(migrations.Migration):
 
 ---
 
-## 3. Organization Management — `/admin/organizations/`
+## 3. Organization Management — `/admin/organizations/` - ✅ **Frontend Integrated**
 
-### 3.1 Aggregate Statistics Endpoint
+**List Endpoint Query Parameters:** `GET /api/v1/admin/organizations/?search={search}&status={status}&page={page}&page_size={page_size}`
+
+> Supports DRF pagination with dynamic `page` & `page_size` selector, string search, and `status` filtering (`active`, `suspended`, `trial`).
 
 **Gap:** The list endpoint only returns organizations. No aggregate stats (Total, Active, Suspended, Trial counts or trends) exist.
 
 **Change:** Create a **new endpoint** or extend the existing one.
 
-#### Option A: New Endpoint (Recommended)
+#### Option A: New Endpoint (Recommended) - ✅ **Frontend Integrated**
 
 **`GET /admin/organizations/stats/`**
 
@@ -260,53 +262,31 @@ class Migration(migrations.Migration):
 
 > **Implementation:** `SELECT status, COUNT(*) FROM organizations GROUP BY status` and compare with previous-period snapshots.
 
-### 3.2 `created_at` Timestamp on Organization
+### 3.2 `created_at` & `status` Fields on Organization - ✅ **Implemented in API & Frontend**
 
-**Gap:** The `Organization` model returned by the API lacks a `created_at` / `added_on` field. Dates are faked using snowflake ID suffixes.
+**Updated API Response (`GET /api/v1/admin/organizations/`):**
 
-**Change:** Add `created_at` to the serialized output:
-
-```diff
-  {
-    "snowflake_id": "7445263800009088",
-    "name": "My Organization",
-    "website": "https://example.com",
-    "industry": "SaaS",
--   "company_size": "1-10"
-+   "company_size": "1-10",
-+   "created_at": "2026-04-06T09:00:00Z"
-  }
+```json
+{
+    "count": 4,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "snowflake_id": "7448491868293173248",
+            "name": null,
+            "website": null,
+            "industry": null,
+            "company_size": null,
+            "created_at": "2026-04-10T22:07:27.688978Z",
+            "status": "ACTIVE"
+        }
+    ]
+}
 ```
 
-> **Implementation:** If `created_at` already exists on the DB model but is not serialized, add it to the `OrganizationSerializer.fields`. If it doesn't exist, add the field with `auto_now_add=True` and backfill existing rows.
+> Both `created_at` and `status` are returned on each organization item in the list response. The frontend now parses `created_at` to display formatted dates and renders the `status` badge for each organization.
 
-**Database Migration (if field doesn't exist):**
-
-```python
-migrations.AddField(
-    model_name='organization',
-    name='created_at',
-    field=models.DateTimeField(auto_now_add=True, null=True),
-),
-```
-
-### 3.3 Organization Status Field
-
-**Gap:** There is no `status` field on the Organization model — Active/Suspended/Trial counts are simulated.
-
-**Change:** Add a `status` field to the Organization model and serializer:
-
-```diff
-  {
-    "snowflake_id": "7445263800009088",
-    "name": "My Organization",
-    ...
-+   "status": "active",
-    "created_at": "2026-04-06T09:00:00Z"
-  }
-```
-
-**Valid `status` values:** `"active"`, `"suspended"`, `"trial"`
 
 **Database Migration:**
 
@@ -359,20 +339,15 @@ migrations.AddField(
 }
 ```
 
-### 3.5 Delete / Suspend Organization Endpoints
+### 3.5 Delete / Suspend Organization Endpoints - ✅ **Frontend Integrated**
 
-**Gap:** Delete and Suspend actions in the front-end only update local state.
+**Endpoints:**
 
-**Change:**
+- **`PATCH /api/v1/admin/organizations/<str:snowflake_id>/`** — Update status (`"active"` / `"suspended"`)
+- **`DELETE /api/v1/admin/organizations/<str:snowflake_id>/`** — Delete organization (Returns `204 No Content`)
 
-- **`DELETE /admin/organizations/{snowflake_id}/`** — Returns `204 No Content`
-- **`PATCH /admin/organizations/{snowflake_id}/`** — Update status
+> Frontend actions menu now dynamically toggles between Suspend and Activate based on current status and sends `DELETE` requests to remove organizations.
 
-**PATCH Request Body:**
-
-```json
-{ "status": "suspended" }
-```
 
 ---
 

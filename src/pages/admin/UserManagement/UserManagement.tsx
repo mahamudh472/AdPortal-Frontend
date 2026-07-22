@@ -211,6 +211,20 @@ const transformApiUser = (apiUser: ApiUser, index: number): UserItem => {
   };
 };
 
+const getStatValue = (metric: any): number => {
+  if (metric === undefined || metric === null) return 0;
+  if (typeof metric === 'number') return metric;
+  if (typeof metric === 'object' && typeof metric.value === 'number') return metric.value;
+  return 0;
+};
+
+const getTrendData = (metric: any): { text: string; type: "up" | "down" | "neutral" } | undefined => {
+  if (!metric || typeof metric !== 'object') return undefined;
+  if (!metric.trend_percentage) return undefined;
+  const direction = (metric.trend_direction as "up" | "down" | "neutral") || "neutral";
+  return { text: metric.trend_percentage, type: direction };
+};
+
 /* =========================
    COMPONENT
  ========================= */
@@ -504,37 +518,39 @@ const UserManagement: React.FC = () => {
         </button>
       </div>
 
+
+
       {/* TOP STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Users" 
-          value={stats.total_users.value} 
-          sub={`+${stats.total_users.last_week} this week`}
-          trend={{ text: stats.total_users.trend_percentage, type: stats.total_users.trend_direction }}
+          value={getStatValue(stats?.total_users)} 
+          sub={`+${(typeof stats?.total_users === 'object' ? stats.total_users?.last_week : 0) ?? 0} this week`}
+          trend={getTrendData(stats?.total_users)}
           icon={<Users className="w-6 h-6" />}
           loading={statsLoading}
         />
         <StatCard 
           title="Active Users" 
-          value={stats.active_users.value} 
-          sub={`${stats.total_users.value ? ((stats.active_users.value / stats.total_users.value) * 100).toFixed(1) : 0}% of total`} 
-          trend={{ text: stats.active_users.trend_percentage, type: stats.active_users.trend_direction }}
+          value={getStatValue(stats?.active_users)} 
+          sub={`${getStatValue(stats?.total_users) ? ((getStatValue(stats?.active_users) / getStatValue(stats?.total_users)) * 100).toFixed(1) : 0}% of total`} 
+          trend={getTrendData(stats?.active_users)}
           icon={<UserCheck className="w-6 h-6" />}
           loading={statsLoading}
         />
         <StatCard 
           title="Suspended" 
-          value={stats.suspended_users.value} 
+          value={getStatValue(stats?.suspended_users)} 
           sub="Requires attention" 
-          trend={{ text: stats.suspended_users.trend_percentage, type: stats.suspended_users.trend_direction }}
+          trend={getTrendData(stats?.suspended_users)}
           icon={<Ban className="w-6 h-6" />}
           loading={statsLoading}
         />
         <StatCard 
           title="Trial Users" 
-          value={stats.trial_users.value} 
+          value={getStatValue(stats?.trial_users)} 
           sub="Converting well" 
-          trend={{ text: stats.trial_users.trend_percentage, type: stats.trial_users.trend_direction }}
+          trend={getTrendData(stats?.trial_users)}
           icon={<FlaskConical className="w-6 h-6" />}
           loading={statsLoading}
         />
@@ -927,6 +943,7 @@ const UserManagement: React.FC = () => {
 };
 
 // Helper components
+// StatCard Subcomponent
 const StatCard = ({
   title,
   value,
@@ -936,7 +953,7 @@ const StatCard = ({
   loading,
 }: {
   title: string;
-  value: number;
+  value?: number;
   sub: string;
   trend?: { text: string; type: "up" | "down" | "neutral" };
   icon: React.ReactNode;
@@ -948,11 +965,13 @@ const StatCard = ({
     );
   }
 
-  const trendStyles = {
+  const trendStyles: Record<string, string> = {
     up: "bg-green-50 text-green-600 border border-green-100",
     down: "bg-red-50 text-red-600 border border-red-100",
     neutral: "bg-yellow-50 text-yellow-600 border border-yellow-100",
   };
+
+  const safeValue = typeof value === 'number' && !isNaN(value) ? value : 0;
 
   return (
     <div className="rounded-3xl border border-slate-100 bg-white p-5 flex items-center justify-between shadow-sm">
@@ -967,7 +986,7 @@ const StatCard = ({
         <div>
           <p className="text-[13px] font-semibold text-slate-500">{title}</p>
           <p className="mt-1 text-2xl font-bold text-slate-900 leading-none">
-            {value.toLocaleString()}
+            {safeValue.toLocaleString()}
           </p>
           <p className="mt-1.5 text-xs text-slate-400 font-medium">
             {sub}
@@ -975,10 +994,10 @@ const StatCard = ({
         </div>
       </div>
       
-      {trend && (
+      {trend && trend.type && trend.text && (
         <div className="flex flex-col items-end gap-1.5 self-start pt-1">
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${trendStyles[trend.type]}`}>
-            {trend.type === 'up' ? `↑ ${trend.text}` : trend.text}
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${trendStyles[trend.type] || trendStyles.neutral}`}>
+            {trend.type === 'up' && !trend.text.startsWith('↑') && !trend.text.startsWith('+') ? `↑ ${trend.text}` : trend.text}
           </span>
           <span className="text-[10px] text-slate-400 font-medium">vs last week</span>
         </div>

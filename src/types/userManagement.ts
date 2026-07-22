@@ -22,31 +22,19 @@ export interface ActionMenuPosition {
   horizontal: 'left' | 'right';
 }
 
+export interface StatMetric {
+  value?: number;
+  previous_period?: number;
+  last_week?: number;
+  trend_percentage?: string;
+  trend_direction?: 'up' | 'down' | 'neutral' | string;
+}
+
 export interface UserStats {
-  total_users: {
-    value: number;
-    last_week: number;
-    trend_percentage: string;
-    trend_direction: 'up' | 'down' | 'neutral';
-  };
-  active_users: {
-    value: number;
-    previous_period: number;
-    trend_percentage: string;
-    trend_direction: 'up' | 'down' | 'neutral';
-  };
-  suspended_users: {
-    value: number;
-    previous_period: number;
-    trend_percentage: string;
-    trend_direction: 'up' | 'down' | 'neutral';
-  };
-  trial_users: {
-    value: number;
-    previous_period: number;
-    trend_percentage: string;
-    trend_direction: 'up' | 'down' | 'neutral';
-  };
+  total_users: StatMetric | number;
+  active_users: StatMetric | number;
+  suspended_users: StatMetric | number;
+  trial_users: StatMetric | number;
 }
 
 // API Response Types

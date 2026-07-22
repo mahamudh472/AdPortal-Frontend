@@ -10,7 +10,6 @@ import {
   Loader2,
   X,
   Plus,
-  SlidersHorizontal,
   ChevronDown,
   AlertCircle,
   FlaskConical,
@@ -24,6 +23,7 @@ import api from "../../../lib/axios";
 import type {
   Organization,
   OrganizationsResponse,
+  OrganizationStatsResponse,
 } from "./organizations";
 
 /* =========================
@@ -73,16 +73,39 @@ const useClickOutside = (ref: React.RefObject<HTMLElement | null>, handler: () =
 
 const fetchOrganizations = async (
   page: number = 1,
-  search?: string
+  search?: string,
+  status?: string,
+  pageSize: number = 10
 ): Promise<OrganizationsResponse> => {
-  let url = `/admin/organizations/?page=${page}`;
+  let url = `/admin/organizations/?page=${page}&page_size=${pageSize}`;
   
   if (search && search.trim()) {
     url += `&search=${encodeURIComponent(search.trim())}`;
   }
   
+  if (status && status !== "All Status") {
+    url += `&status=${encodeURIComponent(status.toLowerCase())}`;
+  }
+  
   const response = await api.get(url);
   return response.data;
+};
+
+const fetchOrganizationStats = async (): Promise<OrganizationStatsResponse> => {
+  const response = await api.get('/admin/organizations/stats/');
+  return response.data;
+};
+
+const updateOrganizationStatus = async (
+  snowflakeId: string,
+  status: "active" | "suspended" | "trial"
+): Promise<{ message?: string; status?: string }> => {
+  const response = await api.patch(`/admin/organizations/${snowflakeId}/`, { status });
+  return response.data;
+};
+
+const deleteOrganization = async (snowflakeId: string): Promise<void> => {
+  await api.delete(`/admin/organizations/${snowflakeId}/`);
 };
 
 /* =========================
@@ -92,6 +115,9 @@ const fetchOrganizations = async (
 const OrganizationManagement: React.FC = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<OrganizationStatsResponse | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -99,10 +125,9 @@ const OrganizationManagement: React.FC = () => {
   const [searchInputValue, setSearchInputValue] = useState("");
 
   // Filter states
-  const [industryFilter, setIndustryFilter] = useState("All Industries");
-  const [sizeFilter, setSizeFilter] = useState("All Company Sizes");
-  const [isIndustryDropdownOpen, setIsIndustryDropdownOpen] = useState(false);
-  const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("All Status");
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
   // Add modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -114,19 +139,106 @@ const OrganizationManagement: React.FC = () => {
 
   // Actions menu state
   const [openAction, setOpenAction] = useState<string | null>(null);
+  const [actionMenuPos, setActionMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: "status" | "delete";
+    org: Organization | null;
+    targetStatus?: "active" | "suspended";
+  }>({
+    isOpen: false,
+    type: "status",
+    org: null,
+  });
+
+  const triggerStatusConfirm = (org: Organization) => {
+    const targetStatus: "active" | "suspended" =
+      org.status?.toUpperCase() === "SUSPENDED" ? "active" : "suspended";
+    setConfirmModal({
+      isOpen: true,
+      type: "status",
+      org,
+      targetStatus,
+    });
+    setOpenAction(null);
+  };
+
+  const triggerDeleteConfirm = (org: Organization) => {
+    setConfirmModal({
+      isOpen: true,
+      type: "delete",
+      org,
+    });
+    setOpenAction(null);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmModal.org) return;
+
+    const org = confirmModal.org;
+    if (confirmModal.type === "status" && confirmModal.targetStatus) {
+      await handleUpdateStatus(org.snowflake_id, org.name, org.status);
+    } else if (confirmModal.type === "delete") {
+      await handleDeleteOrganization(org.snowflake_id, org.name);
+    }
+    setConfirmModal({ isOpen: false, type: "status", org: null });
+  };
+
+  const handleActionClick = (e: React.MouseEvent<HTMLButtonElement>, orgId: string) => {
+    e.stopPropagation();
+    if (openAction === orgId) {
+      setOpenAction(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const menuHeight = 125;
+    const menuWidth = 144;
+
+    let top = rect.bottom + 4;
+    if (rect.bottom + menuHeight > window.innerHeight - 10 && rect.top - menuHeight > 10) {
+      top = rect.top - menuHeight - 4;
+    }
+
+    let left = rect.right - menuWidth;
+    if (left < 10) left = 10;
+
+    setActionMenuPos({ top, left });
+    setOpenAction(orgId);
+  };
 
   // Refs
-  const industryDropdownRef = useRef<HTMLDivElement>(null);
-  const sizeDropdownRef = useRef<HTMLDivElement>(null);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   // Debounce search
   const debouncedSearch = useDebounce(searchInputValue, 500);
 
   // Click outside hooks
-  useClickOutside(industryDropdownRef, () => setIsIndustryDropdownOpen(false));
-  useClickOutside(sizeDropdownRef, () => setIsSizeDropdownOpen(false));
+  useClickOutside(statusDropdownRef, () => setIsStatusDropdownOpen(false));
   useClickOutside(actionMenuRef, () => setOpenAction(null));
+
+  // Close action menu on scroll or window resize
+  useEffect(() => {
+    if (!openAction) return;
+
+    const handleScrollOrResize = () => {
+      setOpenAction(null);
+    };
+
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [openAction]);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
 
   useEffect(() => {
     setSearchTerm(debouncedSearch);
@@ -136,15 +248,27 @@ const OrganizationManagement: React.FC = () => {
   useEffect(() => {
     loadOrganizations();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, statusFilter, pageSize]);
+
+  const loadStats = async () => {
+    setStatsLoading(true);
+    try {
+      const data = await fetchOrganizationStats();
+      setStats(data);
+    } catch (error: unknown) {
+      console.error("Failed to fetch organization stats:", error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
   const loadOrganizations = async () => {
     setLoading(true);
     try {
-      const data = await fetchOrganizations(currentPage, searchTerm);
+      const data = await fetchOrganizations(currentPage, searchTerm, statusFilter, pageSize);
       setOrganizations(data.results);
       setTotalCount(data.count);
-      setTotalPages(Math.ceil(data.count / 10));
+      setTotalPages(Math.ceil(data.count / pageSize));
     } catch (error: unknown) {
       console.error("Failed to fetch organizations:", error);
       const err = error as { response?: { status: number } };
@@ -199,6 +323,8 @@ const OrganizationManagement: React.FC = () => {
         website: newOrgWebsite ? (newOrgWebsite.startsWith("http") ? newOrgWebsite : `https://${newOrgWebsite}`) : null,
         industry: newOrgIndustry,
         company_size: newOrgSize,
+        created_at: new Date().toISOString(),
+        status: "ACTIVE",
       };
 
       setOrganizations(prev => [newOrg, ...prev]);
@@ -217,7 +343,47 @@ const OrganizationManagement: React.FC = () => {
     }
   };
 
-  // Map simulated Added On dates matching the screenshot
+  const handleUpdateStatus = async (snowflakeId: string, orgName: string | null, currentStatus?: string | null) => {
+    const targetStatus: "active" | "suspended" =
+      currentStatus?.toUpperCase() === "SUSPENDED" ? "active" : "suspended";
+
+    setProcessingId(snowflakeId);
+    setOpenAction(null);
+    try {
+      const result = await updateOrganizationStatus(snowflakeId, targetStatus);
+      const updatedStatus = result.status || targetStatus.toUpperCase();
+
+      setOrganizations(prev =>
+        prev.map(o => o.snowflake_id === snowflakeId ? { ...o, status: updatedStatus } : o)
+      );
+      toast.success(result.message || `Organization "${orgName || 'Organization'}" status updated to ${updatedStatus}`);
+      loadStats();
+    } catch (error: unknown) {
+      console.error("Failed to update organization status:", error);
+      toast.error("Failed to update organization status. Please try again.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDeleteOrganization = async (snowflakeId: string, orgName: string | null) => {
+    setProcessingId(snowflakeId);
+    setOpenAction(null);
+    try {
+      await deleteOrganization(snowflakeId);
+      setOrganizations(prev => prev.filter(o => o.snowflake_id !== snowflakeId));
+      setTotalCount(prev => Math.max(0, prev - 1));
+      toast.success(`Organization "${orgName || 'Organization'}" deleted successfully`);
+      loadStats();
+    } catch (error: unknown) {
+      console.error("Failed to delete organization:", error);
+      toast.error("Failed to delete organization. Please try again.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  // Map simulated Added On dates matching the screenshot if created_at is absent
   const getAddedOnDate = (snowflakeId: string, index: number) => {
     if (snowflakeId.includes("9088") || snowflakeId.includes("2912")) return "Apr 6, 2026";
     if (snowflakeId.includes("2832")) return "Apr 5, 2026";
@@ -230,22 +396,46 @@ const OrganizationManagement: React.FC = () => {
     return `Apr ${day}, 2026`;
   };
 
+  const formatOrgDate = (created_at?: string | null, snowflakeId: string = "", index: number = 0) => {
+    if (created_at) {
+      try {
+        const date = new Date(created_at);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          });
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    return getAddedOnDate(snowflakeId, index);
+  };
+
+  const getStatusColor = (status?: string | null): string => {
+    if (!status) return "bg-slate-50 text-slate-600 border-slate-200";
+    switch (status.toUpperCase()) {
+      case "ACTIVE":
+        return "bg-green-50 text-green-700 border-green-200";
+      case "SUSPENDED":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "TRIAL":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      default:
+        return "bg-slate-50 text-slate-600 border-slate-200";
+    }
+  };
+
   // Format ID subtext (e.g. 74452638... - 9088)
   const formatSubId = (id: string) => {
     if (id.length <= 12) return id;
     return `${id.slice(0, 8)}... - ${id.slice(-4)}`;
   };
 
-  // Local filter list
-  const filteredOrgs = organizations.filter((org) => {
-    if (industryFilter !== "All Industries") {
-      if (org.industry?.toLowerCase() !== industryFilter.toLowerCase()) return false;
-    }
-    if (sizeFilter !== "All Company Sizes") {
-      if (org.company_size !== sizeFilter) return false;
-    }
-    return true;
-  });
+  // Filtered organizations list from backend
+  const filteredOrgs = organizations;
 
   return (
     <div className="space-y-6">
@@ -271,34 +461,69 @@ const OrganizationManagement: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Organizations" 
-          value={totalCount} 
-          sub="+0 this week"
+          value={stats ? stats.total_organizations : totalCount} 
+          sub={stats?.new_this_week !== undefined ? `+${stats.new_this_week} this week` : "All registered organizations"}
           icon={<Building2 className="w-6 h-6" />}
-          loading={loading && currentPage === 1 && !searchTerm}
+          loading={statsLoading && loading && currentPage === 1 && !searchTerm}
         />
         <StatCard 
           title="Active Organizations" 
-          value={totalCount > 1 ? 2 : totalCount} 
-          sub={`${totalCount ? ((Math.min(2, totalCount) / totalCount) * 100).toFixed(0) : 0}% of total`} 
-          trend={{ text: "12.5%", type: "up" }}
+          value={stats ? stats.active_organizations.value : (totalCount > 1 ? 2 : totalCount)} 
+          sub={
+            stats
+              ? (stats.active_organizations.previous_period !== undefined
+                  ? `${stats.active_organizations.previous_period} in prev period`
+                  : `${stats.total_organizations ? ((stats.active_organizations.value / stats.total_organizations) * 100).toFixed(0) : 0}% of total`)
+              : `${totalCount ? ((Math.min(2, totalCount) / totalCount) * 100).toFixed(0) : 0}% of total`
+          } 
+          trend={
+            stats
+              ? {
+                  text: stats.active_organizations.trend_percentage || "0%",
+                  type: (stats.active_organizations.trend_direction as "up" | "down" | "neutral") || "neutral"
+                }
+              : { text: "12.5%", type: "up" }
+          }
           icon={<Building2 className="w-6 h-6" />}
-          loading={loading && currentPage === 1 && !searchTerm}
+          loading={statsLoading && loading && currentPage === 1 && !searchTerm}
         />
         <StatCard 
           title="Suspended" 
-          value={0} 
-          sub="Requires attention" 
-          trend={{ text: "- 0%", type: "neutral" }}
+          value={stats ? stats.suspended_organizations.value : 0} 
+          sub={
+            stats?.suspended_organizations.previous_period !== undefined
+              ? `${stats.suspended_organizations.previous_period} in prev period`
+              : "Requires attention"
+          } 
+          trend={
+            stats
+              ? {
+                  text: stats.suspended_organizations.trend_percentage || "0%",
+                  type: (stats.suspended_organizations.trend_direction as "up" | "down" | "neutral") || "neutral"
+                }
+              : { text: "0%", type: "neutral" }
+          }
           icon={<AlertCircle className="w-6 h-6" />}
-          loading={loading && currentPage === 1 && !searchTerm}
+          loading={statsLoading && loading && currentPage === 1 && !searchTerm}
         />
         <StatCard 
           title="Trial Organizations" 
-          value={0} 
-          sub="Converting well" 
-          trend={{ text: "+ 0%", type: "up" }}
+          value={stats ? stats.trial_organizations.value : 0} 
+          sub={
+            stats?.trial_organizations.previous_period !== undefined
+              ? `${stats.trial_organizations.previous_period} in prev period`
+              : "Converting well"
+          } 
+          trend={
+            stats
+              ? {
+                  text: stats.trial_organizations.trend_percentage || "0%",
+                  type: (stats.trial_organizations.trend_direction as "up" | "down" | "neutral") || "neutral"
+                }
+              : { text: "0%", type: "up" }
+          }
           icon={<FlaskConical className="w-6 h-6" />}
-          loading={loading && currentPage === 1 && !searchTerm}
+          loading={statsLoading && loading && currentPage === 1 && !searchTerm}
         />
       </div>
 
@@ -326,69 +551,36 @@ const OrganizationManagement: React.FC = () => {
           )}
         </div>
 
-        {/* Filter Dropdowns */}
+        {/* Filter Dropdown */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Industry filter dropdown */}
-          <div className="relative" ref={industryDropdownRef}>
+          {/* Status filter dropdown */}
+          <div className="relative" ref={statusDropdownRef}>
             <button 
-              onClick={() => setIsIndustryDropdownOpen(!isIndustryDropdownOpen)}
+              onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
               className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 px-4 py-2 rounded-xl cursor-pointer transition-colors shadow-sm"
             >
-              <span>{industryFilter}</span>
+              <span>{statusFilter}</span>
               <ChevronDown size={14} className="text-slate-400" />
             </button>
             
-            {isIndustryDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 z-50 w-44 rounded-xl border border-slate-100 bg-white py-1 shadow-lg animate-in fade-in duration-100 max-h-56 overflow-y-auto">
-                {["All Industries", "SaaS", "Ecommerce", "Finance", "Healthcare", "Education", "Technology", "Marketing", "Consulting"].map((ind) => (
+            {isStatusDropdownOpen && (
+              <div className="absolute right-0 mt-1.5 z-50 w-40 rounded-xl border border-slate-100 bg-white py-1 shadow-lg animate-in fade-in duration-100">
+                {["All Status", "Active", "Suspended", "Trial"].map((st) => (
                   <button
-                    key={ind}
+                    key={st}
                     onClick={() => {
-                      setIndustryFilter(ind);
-                      setIsIndustryDropdownOpen(false);
+                      setStatusFilter(st);
+                      setCurrentPage(1);
+                      setIsStatusDropdownOpen(false);
                     }}
                     className="flex w-full items-center px-4 py-2 text-xs font-semibold hover:bg-slate-50 text-slate-700 text-left cursor-pointer"
                   >
-                    {ind}
+                    {st}
                   </button>
                 ))}
               </div>
             )}
           </div>
-
-          {/* Size filter dropdown */}
-          <div className="relative" ref={sizeDropdownRef}>
-            <button 
-              onClick={() => setIsSizeDropdownOpen(!isSizeDropdownOpen)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 px-4 py-2 rounded-xl cursor-pointer transition-colors shadow-sm"
-            >
-              <span>{sizeFilter}</span>
-              <ChevronDown size={14} className="text-slate-400" />
-            </button>
-            
-            {isSizeDropdownOpen && (
-              <div className="absolute right-0 mt-1.5 z-50 w-44 rounded-xl border border-slate-100 bg-white py-1 shadow-lg animate-in fade-in duration-100">
-                {["All Company Sizes", "1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"].map((sz) => (
-                  <button
-                    key={sz}
-                    onClick={() => {
-                      setSizeFilter(sz);
-                      setIsSizeDropdownOpen(false);
-                    }}
-                    className="flex w-full items-center px-4 py-2 text-xs font-semibold hover:bg-slate-50 text-slate-700 text-left cursor-pointer"
-                  >
-                    {sz}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Filters Toggle Button */}
-          <button className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:border-slate-300 px-4 py-2 rounded-xl cursor-pointer transition-colors shadow-sm">
-            <SlidersHorizontal size={14} className="text-slate-400" />
-            <span>Filters</span>
-          </button>
         </div>
       </div>
 
@@ -402,11 +594,12 @@ const OrganizationManagement: React.FC = () => {
           <table className="w-full text-sm min-w-[800px]">
             <thead className="bg-slate-50/50 text-slate-400 font-semibold border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 text-left w-[280px]">Organization</th>
-                <th className="px-6 py-4 text-left w-[180px]">Website</th>
-                <th className="px-6 py-4 text-left w-[160px]">Industry</th>
-                <th className="px-6 py-4 text-left w-[150px]">Company Size</th>
-                <th className="px-6 py-4 text-left w-[200px]">Snowflake ID</th>
+                <th className="px-6 py-4 text-left w-[260px]">Organization</th>
+                <th className="px-6 py-4 text-left w-[120px]">Status</th>
+                <th className="px-6 py-4 text-left w-[160px]">Website</th>
+                <th className="px-6 py-4 text-left w-[140px]">Industry</th>
+                <th className="px-6 py-4 text-left w-[140px]">Company Size</th>
+                <th className="px-6 py-4 text-left w-[180px]">Snowflake ID</th>
                 <th className="px-6 py-4 text-left w-[140px]">Added On</th>
                 <th className="px-6 py-4 text-right pr-6 w-[80px]">Actions</th>
               </tr>
@@ -415,7 +608,7 @@ const OrganizationManagement: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center">
+                  <td colSpan={8} className="px-6 py-16 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <Loader2 size={32} className="animate-spin text-blue-600 mb-3" />
                       <p className="text-xs text-slate-500 font-medium">Loading organizations...</p>
@@ -440,6 +633,13 @@ const OrganizationManagement: React.FC = () => {
                           </p>
                         </div>
                       </div>
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusColor(org.status || "ACTIVE")}`}>
+                        {(org.status || "ACTIVE").toUpperCase()}
+                      </span>
                     </td>
                     
                     {/* Website */}
@@ -495,23 +695,34 @@ const OrganizationManagement: React.FC = () => {
                     {/* Added On Date */}
                     <td className="px-6 py-4">
                       <span className="text-xs font-semibold text-slate-500">
-                        {getAddedOnDate(org.snowflake_id, index)}
+                        {formatOrgDate(org.created_at, org.snowflake_id, index)}
                       </span>
                     </td>
 
                     {/* Actions button */}
                     <td className="px-6 py-4 text-right pr-6 relative">
                       <button 
-                        onClick={() => setOpenAction(openAction === org.snowflake_id ? null : org.snowflake_id)}
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                        onClick={(e) => handleActionClick(e, org.snowflake_id)}
+                        disabled={processingId === org.snowflake_id}
+                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                       >
-                        <MoreVertical size={16} />
+                        {processingId === org.snowflake_id ? (
+                          <Loader2 size={16} className="animate-spin text-blue-600" />
+                        ) : (
+                          <MoreVertical size={16} />
+                        )}
                       </button>
 
                       {openAction === org.snowflake_id && (
                         <div
                           ref={actionMenuRef}
-                          className="absolute z-50 w-36 rounded-xl border border-slate-100 bg-white shadow-xl py-1 right-6 mt-1 animate-in fade-in duration-100"
+                          style={{
+                            position: "fixed",
+                            top: `${actionMenuPos.top}px`,
+                            left: `${actionMenuPos.left}px`,
+                            zIndex: 9999,
+                          }}
+                          className="w-36 rounded-xl border border-slate-100 bg-white shadow-xl py-1 animate-in fade-in duration-100 text-left"
                         >
                           <button
                             onClick={() => {
@@ -520,26 +731,34 @@ const OrganizationManagement: React.FC = () => {
                             }}
                             className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
                           >
-                            <CheckCircle size={14} className="text-green-500" />
+                            <CheckCircle size={14} className="text-blue-500" />
                             Manage
                           </button>
+
+                          {org.status?.toUpperCase() === "SUSPENDED" ? (
+                            <button
+                              onClick={() => triggerStatusConfirm(org)}
+                              disabled={processingId === org.snowflake_id}
+                              className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-green-600 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <CheckCircle size={14} className="text-green-500" />
+                              Activate
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => triggerStatusConfirm(org)}
+                              disabled={processingId === org.snowflake_id}
+                              className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-amber-600 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <AlertCircle size={14} className="text-amber-500" />
+                              Suspend
+                            </button>
+                          )}
+
                           <button
-                            onClick={() => {
-                              toast.info(`Suspending ${org.name || "organization"}`);
-                              setOpenAction(null);
-                            }}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-amber-600 hover:bg-slate-50 transition-colors cursor-pointer"
-                          >
-                            <AlertCircle size={14} className="text-amber-500" />
-                            Suspend
-                          </button>
-                          <button
-                            onClick={() => {
-                              setOrganizations(prev => prev.filter(o => o.snowflake_id !== org.snowflake_id));
-                              toast.success("Organization removed successfully");
-                              setOpenAction(null);
-                            }}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-slate-50 transition-colors cursor-pointer border-t border-slate-50"
+                            onClick={() => triggerDeleteConfirm(org)}
+                            disabled={processingId === org.snowflake_id}
+                            className="flex w-full items-center gap-2 px-4 py-2 text-xs font-semibold text-red-600 hover:bg-slate-50 transition-colors cursor-pointer border-t border-slate-50 disabled:opacity-50"
                           >
                             <XCircle size={14} className="text-red-500" />
                             Delete
@@ -551,7 +770,7 @@ const OrganizationManagement: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center">
+                  <td colSpan={8} className="px-6 py-16 text-center">
                     <Building2 size={48} className="mx-auto mb-4 text-slate-300" />
                     <p className="text-sm text-slate-500 font-semibold mb-2">No organizations found</p>
                     {searchTerm && (
@@ -570,10 +789,18 @@ const OrganizationManagement: React.FC = () => {
         {!loading && totalPages > 0 && filteredOrgs.length > 0 && (
           <div className="px-6 py-5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <select className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer shadow-sm outline-none">
-                <option>10 per page</option>
-                <option>20 per page</option>
-                <option>50 per page</option>
+              <select 
+                value={`${pageSize} per page`}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value.split(" ")[0]);
+                  setPageSize(val);
+                  setCurrentPage(1);
+                }}
+                className="text-xs font-semibold text-slate-600 bg-white border border-slate-200 px-3 py-1.5 rounded-xl cursor-pointer shadow-sm outline-none"
+              >
+                <option value="10 per page">10 per page</option>
+                <option value="20 per page">20 per page</option>
+                <option value="50 per page">50 per page</option>
               </select>
             </div>
 
@@ -610,7 +837,7 @@ const OrganizationManagement: React.FC = () => {
 
       {/* ADD ORGANIZATION MODAL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-[2px]">
           <div className="bg-white rounded-3xl border border-slate-100 p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200 mx-4">
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-lg font-bold text-slate-900">Add Organization</h3>
@@ -698,6 +925,105 @@ const OrganizationManagement: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* CONFIRMATION MODAL (STATUS CHANGE OR DELETE) */}
+      {confirmModal.isOpen && confirmModal.org && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-[2px]">
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200 mx-4">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`h-11 w-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                  confirmModal.type === "delete"
+                    ? "bg-red-50 text-red-600"
+                    : confirmModal.targetStatus === "suspended"
+                    ? "bg-amber-50 text-amber-600"
+                    : "bg-green-50 text-green-600"
+                }`}>
+                  {confirmModal.type === "delete" ? (
+                    <XCircle size={22} />
+                  ) : confirmModal.targetStatus === "suspended" ? (
+                    <AlertCircle size={22} />
+                  ) : (
+                    <CheckCircle size={22} />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 leading-snug">
+                    {confirmModal.type === "delete"
+                      ? "Delete Organization"
+                      : confirmModal.targetStatus === "suspended"
+                      ? "Suspend Organization"
+                      : "Activate Organization"}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {confirmModal.org.name || "Unnamed Organization"}
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setConfirmModal({ isOpen: false, type: "status", org: null })}
+                className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="py-2 mb-6">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                {confirmModal.type === "delete" ? (
+                  <>
+                    Are you sure you want to delete <span className="font-bold text-slate-900">{confirmModal.org.name || "this organization"}</span>? This action is permanent and cannot be undone.
+                  </>
+                ) : confirmModal.targetStatus === "suspended" ? (
+                  <>
+                    Are you sure you want to suspend <span className="font-bold text-slate-900">{confirmModal.org.name || "this organization"}</span>? Its access to platform features will be temporarily restricted.
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to activate <span className="font-bold text-slate-900">{confirmModal.org.name || "this organization"}</span>? Full platform access will be restored.
+                  </>
+                )}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmModal({ isOpen: false, type: "status", org: null })}
+                disabled={processingId === confirmModal.org.snowflake_id}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-4 py-2.5 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                disabled={processingId === confirmModal.org.snowflake_id}
+                className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-colors shadow-sm cursor-pointer flex items-center gap-2 disabled:opacity-50 ${
+                  confirmModal.type === "delete"
+                    ? "bg-red-600 hover:bg-red-700 text-white"
+                    : confirmModal.targetStatus === "suspended"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white"
+                    : "bg-green-600 hover:bg-green-700 text-white"
+                }`}
+              >
+                {processingId === confirmModal.org.snowflake_id && (
+                  <Loader2 size={14} className="animate-spin" />
+                )}
+                <span>
+                  {processingId === confirmModal.org.snowflake_id
+                    ? "Processing..."
+                    : confirmModal.type === "delete"
+                    ? "Delete Organization"
+                    : confirmModal.targetStatus === "suspended"
+                    ? "Suspend Organization"
+                    : "Activate Organization"}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       )}

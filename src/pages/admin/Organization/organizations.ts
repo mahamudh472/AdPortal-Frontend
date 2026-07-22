@@ -6,6 +6,8 @@ export interface Organization {
   website: string | null;
   industry: string | null;
   company_size: string | null;
+  created_at?: string | null;
+  status?: string | null;
 }
 
 export interface OrganizationsResponse {
@@ -16,8 +18,9 @@ export interface OrganizationsResponse {
 }
 
 export interface OrganizationsFilters {
-  industry: string;
-  companySize: string;
+  status?: string;
+  search?: string;
+  pageSize?: number;
 }
 
 // Optional: Extended organization type with additional fields if needed
@@ -41,4 +44,20 @@ export interface OrganizationDetails extends ExtendedOrganization {
   primary_contact_name?: string;
   primary_contact_email?: string;
   primary_contact_phone?: string;
+}
+
+// Organization Statistics Endpoint Response Types
+export interface StatMetric {
+  value: number;
+  previous_period?: number;
+  trend_percentage?: string;
+  trend_direction?: 'up' | 'down' | 'neutral' | string;
+}
+
+export interface OrganizationStatsResponse {
+  total_organizations: number;
+  active_organizations: StatMetric;
+  suspended_organizations: StatMetric;
+  trial_organizations: StatMetric;
+  new_this_week?: number;
 }
