@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Loader2,
   X,
-  Plus,
   ChevronDown,
   AlertCircle,
   FlaskConical,
@@ -129,13 +128,7 @@ const OrganizationManagement: React.FC = () => {
   const [pageSize, setPageSize] = useState<number>(10);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
-  // Add modal states
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [newOrgName, setNewOrgName] = useState("");
-  const [newOrgWebsite, setNewOrgWebsite] = useState("");
-  const [newOrgIndustry, setNewOrgIndustry] = useState("Technology");
-  const [newOrgSize, setNewOrgSize] = useState("1-10");
-  const [adding, setAdding] = useState(false);
+
 
   // Actions menu state
   const [openAction, setOpenAction] = useState<string | null>(null);
@@ -303,45 +296,6 @@ const OrganizationManagement: React.FC = () => {
     setCurrentPage(prev => Math.min(totalPages, prev + 1));
   };
 
-  const handleAddOrgSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newOrgName) {
-      toast.error("Please fill in organization name");
-      return;
-    }
-    setAdding(true);
-    try {
-      // Simulate API call to save organization
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Generate a random 19-digit Snowflake ID
-      const randomId = "7445" + Math.floor(100000000000000 + Math.random() * 900000000000000).toString();
-
-      const newOrg: Organization = {
-        snowflake_id: randomId,
-        name: newOrgName,
-        website: newOrgWebsite ? (newOrgWebsite.startsWith("http") ? newOrgWebsite : `https://${newOrgWebsite}`) : null,
-        industry: newOrgIndustry,
-        company_size: newOrgSize,
-        created_at: new Date().toISOString(),
-        status: "ACTIVE",
-      };
-
-      setOrganizations(prev => [newOrg, ...prev]);
-      setTotalCount(prev => prev + 1);
-
-      toast.success(`Organization "${newOrgName}" added successfully!`);
-      setIsAddModalOpen(false);
-      setNewOrgName("");
-      setNewOrgWebsite("");
-      setNewOrgIndustry("Technology");
-      setNewOrgSize("1-10");
-    } catch (err) {
-      toast.error("Failed to add organization");
-    } finally {
-      setAdding(false);
-    }
-  };
 
   const handleUpdateStatus = async (snowflakeId: string, orgName: string | null, currentStatus?: string | null) => {
     const targetStatus: "active" | "suspended" =
@@ -440,21 +394,11 @@ const OrganizationManagement: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Organization Management</h1>
-          <p className="text-sm text-slate-500 font-medium mt-0.5">
-            Manage and view all organizations on the platform
-          </p>
-        </div>
-
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors cursor-pointer shadow-sm animate-in fade-in"
-        >
-          <Plus size={15} />
-          <span>Add Organization</span>
-        </button>
+      <div>
+        <h1 className="text-xl font-bold text-slate-900">Organization Management</h1>
+        <p className="text-sm text-slate-500 font-medium mt-0.5">
+          Manage and view all organizations on the platform
+        </p>
       </div>
 
       {/* TOP STATS */}
@@ -835,99 +779,7 @@ const OrganizationManagement: React.FC = () => {
         )}
       </div>
 
-      {/* ADD ORGANIZATION MODAL */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-[2px]">
-          <div className="bg-white rounded-3xl border border-slate-100 p-6 w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200 mx-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-bold text-slate-900">Add Organization</h3>
-              <button 
-                onClick={() => setIsAddModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <p className="text-xs text-slate-500 mb-5">Create a new workspace organization on the platform.</p>
-            
-            <form onSubmit={handleAddOrgSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Organization Name</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Mahamud's Ad Service"
-                  className="w-full text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:bg-white focus:border-blue-500 transition-colors"
-                  value={newOrgName}
-                  onChange={(e) => setNewOrgName(e.target.value)}
-                />
-              </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Website URL</label>
-                <input
-                  type="text"
-                  placeholder="demo-web.com"
-                  className="w-full text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:bg-white focus:border-blue-500 transition-colors"
-                  value={newOrgWebsite}
-                  onChange={(e) => setNewOrgWebsite(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Industry</label>
-                <select
-                  className="w-full text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:bg-white focus:border-blue-500 transition-colors cursor-pointer"
-                  value={newOrgIndustry}
-                  onChange={(e) => setNewOrgIndustry(e.target.value)}
-                >
-                  <option value="SaaS">SaaS</option>
-                  <option value="Ecommerce">Ecommerce</option>
-                  <option value="Finance">Finance</option>
-                  <option value="Healthcare">Healthcare</option>
-                  <option value="Education">Education</option>
-                  <option value="Technology">Technology</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Consulting">Consulting</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-500 mb-1.5">Company Size</label>
-                <select
-                  className="w-full text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:bg-white focus:border-blue-500 transition-colors cursor-pointer"
-                  value={newOrgSize}
-                  onChange={(e) => setNewOrgSize(e.target.value)}
-                >
-                  <option value="1-10">1-10</option>
-                  <option value="11-50">11-50</option>
-                  <option value="51-200">51-200</option>
-                  <option value="201-500">201-500</option>
-                  <option value="501-1000">501-1000</option>
-                  <option value="1000+">1000+</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-700 px-4 py-2.5 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={adding}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors disabled:opacity-50 cursor-pointer"
-                >
-                  {adding ? "Adding..." : "Add Organization"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* CONFIRMATION MODAL (STATUS CHANGE OR DELETE) */}
       {confirmModal.isOpen && confirmModal.org && (

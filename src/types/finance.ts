@@ -6,6 +6,17 @@ export interface FinanceDashboardData {
   mrr_growth: number;
   total_transactions: number;
   failed_payments: number;
+  sparklines?: {
+    monthly_revenue: number[];
+    mrr_growth: number[];
+    total_transactions: number[];
+    failed_payments: number[];
+  };
+  payment_summary?: {
+    successful: { count: number; total: number };
+    failed: { count: number; total: number };
+    refunded: { count: number; total: number };
+  };
   revenue_overview: RevenueOverviewData;
   revenue_by_plan: RevenueByPlanData;
 }

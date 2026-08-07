@@ -36,9 +36,28 @@ interface FeatureUsageItem {
   usage: number;
 }
 
+interface MetricSummaryDetail {
+  value: number;
+  previous_period: number;
+  trend_percentage: string;
+  trend_direction: 'up' | 'down' | 'neutral';
+  sparkline?: number[];
+}
+
+interface FeatureSummaryDetail {
+  name: string;
+  usage_percent: number;
+}
+
 interface PlatformAnalyticsData {
   user_growth: UserGrowthItem[];
   feature_usage: FeatureUsageItem[];
+  summary?: {
+    total_new_users: MetricSummaryDetail;
+    avg_active_users: MetricSummaryDetail;
+    churned_users: MetricSummaryDetail;
+    most_used_feature: FeatureSummaryDetail;
+  };
 }
 
 export interface UserGrowthData {
@@ -193,32 +212,45 @@ const PlatformAnalytics: React.FC = () => {
     fetchAnalyticsData();
   };
 
-  // Sparkline components
-  const SparklineBlue = () => (
-    <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1V24H1V23Z" fill="url(#sparkNewUsers)" opacity="0.1"/>
-      <defs>
-        <linearGradient id="sparkNewUsers" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#3B82F6"/>
-          <stop offset="100%" stopColor="#3B82F6" stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  );
+  // Sparkline component
+  const Sparkline = ({ data, color, fillUrl, id }: { data?: number[], color: string, fillUrl?: string, id?: string }) => {
+    if (!data || data.length < 2) {
+      return (
+        <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 20H59" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.3"/>
+        </svg>
+      );
+    }
+    const max = Math.max(...data, 1);
+    const min = Math.min(...data, 0);
+    const range = max - min || 1;
+    const width = 60;
+    const height = 24;
+    const points = data.map((val, index) => {
+      const x = (index / (data.length - 1)) * width;
+      const y = height - ((val - min) / range) * (height - 4) - 2;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    });
+    const linePath = `M ${points.join(" L ")}`;
+    const fillPath = fillUrl ? `${linePath} L ${width},${height} L 0,${height} Z` : null;
 
-  const SparklineGreen = () => (
-    <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1" stroke="#10B981" strokeWidth="2" strokeLinecap="round"/>
-      <path d="M1 23C12 21 18 15 28 14C38 13 42 3 59 1V24H1V23Z" fill="url(#sparkActiveUsers)" opacity="0.1"/>
-      <defs>
-        <linearGradient id="sparkActiveUsers" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#10B981"/>
-          <stop offset="100%" stopColor="#10B981" stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  );
+    return (
+      <svg width="60" height="24" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {fillPath && id && (
+          <>
+            <path d={fillPath} fill={`url(#${id})`} opacity="0.1" />
+            <defs>
+              <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={color} />
+                <stop offset="100%" stopColor={color} stopOpacity="0" />
+              </linearGradient>
+            </defs>
+          </>
+        )}
+        <path d={linePath} stroke={color} strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  };
 
   // Dynamic calculations
   const totalNewUsers = userGrowthData.reduce((sum, item) => sum + item.newUsers, 0);
@@ -334,26 +366,26 @@ const PlatformAnalytics: React.FC = () => {
         <StatCard
           icon={<Users size={20} />}
           title="Total New Users (Last 6 months)"
-          value={totalNewUsers.toString()}
-          change="100.0% vs previous 6 months"
-          positive={true}
+          value={analyticsData?.summary?.total_new_users ? analyticsData.summary.total_new_users.value.toString() : totalNewUsers.toString()}
+          change={analyticsData?.summary?.total_new_users ? `${analyticsData.summary.total_new_users.trend_percentage} vs previous 6 months` : "100.0% vs previous 6 months"}
+          positive={analyticsData?.summary?.total_new_users ? analyticsData.summary.total_new_users.trend_direction === 'up' : true}
           bgColor="bg-blue-50 text-blue-600"
-          sparkline={<SparklineBlue />}
+          sparkline={<Sparkline data={analyticsData?.summary?.total_new_users?.sparkline} color="#3B82F6" id="sparkNewUsers" fillUrl="sparkNewUsers" />}
         />
         <StatCard
           icon={<Activity size={20} />}
           title="Avg. Active Users"
-          value={avgActiveUsers.toString()}
-          change="100.0% vs previous 6 months"
-          positive={true}
+          value={analyticsData?.summary?.avg_active_users ? analyticsData.summary.avg_active_users.value.toString() : avgActiveUsers.toString()}
+          change={analyticsData?.summary?.avg_active_users ? `${analyticsData.summary.avg_active_users.trend_percentage} vs previous 6 months` : "100.0% vs previous 6 months"}
+          positive={analyticsData?.summary?.avg_active_users ? analyticsData.summary.avg_active_users.trend_direction === 'up' : true}
           bgColor="bg-green-50 text-green-600"
-          sparkline={<SparklineGreen />}
+          sparkline={<Sparkline data={analyticsData?.summary?.avg_active_users?.sparkline} color="#10B981" id="sparkActiveUsers" fillUrl="sparkActiveUsers" />}
         />
         <StatCard
           icon={<Star size={20} />}
           title="Most Used Feature"
-          value={mostUsedFeature.name}
-          subText={`Used by ${mostUsedFeature.value}% of users`}
+          value={analyticsData?.summary?.most_used_feature ? analyticsData.summary.most_used_feature.name : mostUsedFeature.name}
+          subText={`Used by ${analyticsData?.summary?.most_used_feature ? analyticsData.summary.most_used_feature.usage_percent : mostUsedFeature.value}% of users`}
           bgColor="bg-purple-50 text-indigo-600"
           sparkline={
             <div className="relative w-14 h-14 flex items-center justify-center flex-shrink-0">
@@ -368,7 +400,7 @@ const PlatformAnalytics: React.FC = () => {
                 <path
                   className="text-indigo-600"
                   strokeWidth="3.5"
-                  strokeDasharray={`${mostUsedFeature.value}, 100`}
+                  strokeDasharray={`${analyticsData?.summary?.most_used_feature ? analyticsData.summary.most_used_feature.usage_percent : mostUsedFeature.value}, 100`}
                   strokeLinecap="round"
                   stroke="currentColor"
                   fill="none"
@@ -376,7 +408,7 @@ const PlatformAnalytics: React.FC = () => {
                 />
               </svg>
               <div className="absolute text-[9px] font-extrabold text-slate-800">
-                {mostUsedFeature.value}%
+                {analyticsData?.summary?.most_used_feature ? analyticsData.summary.most_used_feature.usage_percent : mostUsedFeature.value}%
               </div>
             </div>
           }
@@ -506,8 +538,15 @@ const PlatformAnalytics: React.FC = () => {
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 leading-none">New Users</p>
                   <p className="text-sm font-extrabold text-slate-900 mt-1 leading-none">
-                    {totalNewUsers}{" "}
-                    <span className="text-[10px] font-bold text-green-600 ml-1.5">↑ 100.0%</span>
+                    {analyticsData?.summary ? analyticsData.summary.total_new_users.value : totalNewUsers}{" "}
+                    <span className={`text-[10px] font-bold ml-1.5 ${
+                      analyticsData?.summary?.total_new_users?.trend_direction === 'up' ? 'text-green-600' :
+                      analyticsData?.summary?.total_new_users?.trend_direction === 'down' ? 'text-red-600' : 'text-slate-400'
+                    }`}>
+                      {analyticsData?.summary?.total_new_users?.trend_direction === 'up' ? '↑' :
+                       analyticsData?.summary?.total_new_users?.trend_direction === 'down' ? '↓' : ''}{" "}
+                      {analyticsData?.summary ? analyticsData.summary.total_new_users.trend_percentage : "100.0%"}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -520,8 +559,15 @@ const PlatformAnalytics: React.FC = () => {
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 leading-none">Active Users</p>
                   <p className="text-sm font-extrabold text-slate-900 mt-1 leading-none">
-                    {activeUsersLatest}{" "}
-                    <span className="text-[10px] font-bold text-green-600 ml-1.5">↑ 87.5%</span>
+                    {analyticsData?.summary ? analyticsData.summary.avg_active_users.value : activeUsersLatest}{" "}
+                    <span className={`text-[10px] font-bold ml-1.5 ${
+                      analyticsData?.summary?.avg_active_users?.trend_direction === 'up' ? 'text-green-600' :
+                      analyticsData?.summary?.avg_active_users?.trend_direction === 'down' ? 'text-red-600' : 'text-slate-400'
+                    }`}>
+                      {analyticsData?.summary?.avg_active_users?.trend_direction === 'up' ? '↑' :
+                       analyticsData?.summary?.avg_active_users?.trend_direction === 'down' ? '↓' : ''}{" "}
+                      {analyticsData?.summary ? analyticsData.summary.avg_active_users.trend_percentage : "87.5%"}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -534,8 +580,15 @@ const PlatformAnalytics: React.FC = () => {
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 leading-none">Churned Users</p>
                   <p className="text-sm font-extrabold text-slate-900 mt-1 leading-none">
-                    0{" "}
-                    <span className="text-[10px] font-bold text-slate-400 ml-1.5">- 0%</span>
+                    {analyticsData?.summary ? analyticsData.summary.churned_users.value : 0}{" "}
+                    <span className={`text-[10px] font-bold ml-1.5 ${
+                      analyticsData?.summary?.churned_users?.trend_direction === 'up' ? 'text-green-600' :
+                      analyticsData?.summary?.churned_users?.trend_direction === 'down' ? 'text-red-600' : 'text-slate-400'
+                    }`}>
+                      {analyticsData?.summary?.churned_users?.trend_direction === 'up' ? '↑' :
+                       analyticsData?.summary?.churned_users?.trend_direction === 'down' ? '↓' : ''}{" "}
+                      {analyticsData?.summary ? analyticsData.summary.churned_users.trend_percentage : "0%"}
+                    </span>
                   </p>
                 </div>
               </div>
