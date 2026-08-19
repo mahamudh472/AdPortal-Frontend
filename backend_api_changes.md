@@ -314,6 +314,38 @@ class Invoice(models.Model):
 
 ---
 
+## 6. Analytics — `/main/analytics/`
+
+### 6.1 Device Performance & Insight Highlights Payload
+
+**Gap:** `/main/analytics/` response lacks device breakdown and performance highlight metric cards.
+
+**Change:** Extend `/main/analytics/` response JSON:
+
+```json
+{
+  "top_metrics": {
+    "total_spend": { "value": 0, "change_percent": 0 },
+    "impressions": { "value": 0, "change_percent": 0 },
+    "click_rate": { "value": 0, "change_percent": 0 },
+    "conversions": { "value": 0, "change_percent": 0 }
+  },
+  "device_performance": [
+    { "device": "Mobile", "impressions": 125000, "clicks": 4300 },
+    { "device": "Desktop", "impressions": 92000, "clicks": 3200 },
+    { "device": "Tablet", "impressions": 38000, "clicks": 1500 }
+  ],
+  "insights_summary": {
+    "top_performing_platform": null,
+    "most_conversions_platform": null,
+    "best_click_rate_platform": null,
+    "lowest_cost_per_conversion": null
+  }
+}
+```
+
+---
+
 ## Summary of Remaining Changes
 
 ### Modified Endpoints
@@ -325,6 +357,7 @@ class Invoice(models.Model):
 | `GET /main/dashboard/` | Extend response | `platform_spends`, `performance_overview`, `budget_recommendation` |
 | `GET /main/campaigns/` | Extend response | `ctr_trend`, `conversions_trend`, `roas_trend`, `sparkline_data` |
 | `GET /main/ai-insights/` | Extend response | `impact`, `metrics`, `campaigns_count`, `action_type`, `summary` |
+| `GET /main/analytics/` | Extend response | `device_performance`, `insights_summary` |
 
 ### New Endpoints
 
@@ -357,4 +390,5 @@ class Invoice(models.Model):
 3. **Sparkline Arrays:** Should contain 6-7 data points representing historical progression. Values should be integers or floats representing the metric's value for that period.
 
 4. **API Versioning:** All changes target `/api/v1/`. If breaking changes are needed, consider deploying behind a feature flag or creating `/api/v2/` variants.
+
 

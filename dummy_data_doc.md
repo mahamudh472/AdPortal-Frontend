@@ -97,13 +97,14 @@ This document lists all properties and sections in the Admin Dashboard, User Man
 
 ---
 
-## 8. AI Tools & Optimization (`src/components/AITools/`)
+## 9. Platform Analytics (`src/components/Analytics/`)
 
-### AI Optimization Control Center & Insights
+### Performance by Device & Insight Highlights
 - **API Gap**:
-  - The API endpoint `GET /api/v1/main/ai-insights/` returns basic title/description strings, but lacks structured fields for priority impact levels (`HIGH`, `MEDIUM`, `LOW`, `INFO`), metric deltas (e.g. `+18% Conversions`, `-10% CPA`), campaign counts, action types (`apply`, `fix`, `generate`, `create`), or auto-optimization settings (`mode: "balanced"`, `frequency: "daily"`, `potential_impact: { conversions: "+25%", cpa: "-15%", roas: "+18%" }`).
+  - The endpoint `GET /api/v1/main/analytics/` returns top metrics, monthly performance, and platform spend, but does not provide device breakdown (`Mobile`, `Desktop`, `Tablet`) or performance highlight cards (e.g. `Top Performing Platform`, `Most Conversions`, `Best Click Rate`, `Lowest Cost / Conversion`).
 - **Front-end Workaround**:
-  - Renders priority-coded insight cards with left accent borders, action buttons, interactive control center mode switches (`Conservative`, `Balanced`, `Aggressive`), and potential 30-day ROI impact summary metrics.
+  - Renders device performance bar chart with sample data and fallback placeholder cards (`No data available / Run campaigns to see insights`).
+
 
 
 
