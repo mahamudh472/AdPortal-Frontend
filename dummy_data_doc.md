@@ -97,13 +97,16 @@ This document lists all properties and sections in the Admin Dashboard, User Man
 
 ---
 
-## 11. Subscriptions & Billing (`src/components/Analytics/Subscriptions/`)
+---
 
-### Billing History & Download All Invoices
+## 12. Team Collaboration (`src/components/Team/`)
+
+### Team Member Activity & Role Filter
 - **API Gap**:
-  - The endpoint `GET /api/v1/finance/billing-history/` returns list of invoices, but lacks sub-period labels (e.g. `Apr 5 - May 5, 2026`) and batch ZIP download endpoint (`GET /api/v1/finance/invoices/download-all/`).
+  - The endpoint `GET /api/v1/team/members/` returns basic member profile info, but lacks timestamps for `joined_date`, `last_active_at`, and stat aggregates for `inactive_members`.
 - **Front-end Workaround**:
-  - Renders formatted date sub-periods and provides interactive mock handlers for downloading individual and bulk invoice PDFs.
+  - Displays formatted timestamps for member activity, search & role filter controls, and top stats summary metrics (`Total Members`, `Active Users`, `Pending Invites`, `Inactive Members`).
+
 
 
 

@@ -400,6 +400,7 @@ Returns a `ZIP` file archive containing all historical invoice PDFs for the orga
 | `GET /main/campaigns/` | Extend response | `ctr_trend`, `conversions_trend`, `roas_trend`, `sparkline_data` |
 | `GET /main/ai-insights/` | Extend response | `impact`, `metrics`, `campaigns_count`, `action_type`, `summary` |
 | `GET /main/analytics/` | Extend response | `device_performance`, `insights_summary` |
+| `GET /team/members/` | Extend response | `joined_date`, `last_active_at`, `inactive_members` aggregate |
 
 ### New Endpoints
 
