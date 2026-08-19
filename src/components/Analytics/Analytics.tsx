@@ -24,7 +24,6 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import { toast } from "sonner";
 import api from "../../lib/axios";
 
 // Types
@@ -77,6 +76,7 @@ export interface PlatformSpend {
   name: "Meta" | "Google" | "TikTok";
   value: number;
   color: string;
+  [key: string]: any;
 }
 
 export interface MonthlyPerformanceData {
@@ -149,9 +149,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 const Analytics: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
-  const [timeRange, setTimeRange] = useState<string>("Last 6 Months");
+  const [timeRange] = useState<string>("Last 6 Months");
   const [chartTimeframe, setChartTimeframe] = useState<string>("6M");
 
   const [stats, setStats] = useState<StatCard[]>([]);

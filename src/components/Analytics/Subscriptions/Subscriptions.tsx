@@ -15,7 +15,6 @@ import { useNavigate } from "react-router-dom";
 import api from "../../../lib/axios";
 import type {
   Plan,
-  BillingHistoryItem,
   PlanKey,
   ApiPlan,
   ApiFeature,
@@ -155,8 +154,6 @@ const SubscriptionBilling: React.FC = () => {
   const [activePlan, setActivePlan] = useState<PlanKey | "">("starter");
   const [subscriptionInfo, setSubscriptionInfo] = useState<string | null>(null);
   const [billingHistory, setBillingHistory] = useState<FormattedBillingRecord[]>(DEFAULT_MOCK_BILLING);
-  const [loadingPlans, setLoadingPlans] = useState(false);
-  const [loadingHistory, setLoadingHistory] = useState(false);
   const [processingPayment, setProcessingPayment] = useState<{ planId: number; planKey: PlanKey } | null>(null);
 
   useEffect(() => {

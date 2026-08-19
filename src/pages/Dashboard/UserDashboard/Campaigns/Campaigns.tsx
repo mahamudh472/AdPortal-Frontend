@@ -642,17 +642,17 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
 
           {/* Platform Logos */}
           <div className="flex items-center gap-1.5 ml-auto">
-            {platforms.some((p) => p.toUpperCase().includes("META") || p.toUpperCase().includes("FACEBOOK")) && (
+            {platforms.some((p: string) => p.toUpperCase().includes("META") || p.toUpperCase().includes("FACEBOOK")) && (
               <span title="Meta / Facebook">
                 <MetaIcon />
               </span>
             )}
-            {platforms.some((p) => p.toUpperCase().includes("GOOGLE")) && (
+            {platforms.some((p: string) => p.toUpperCase().includes("GOOGLE")) && (
               <span title="Google Ads">
                 <GoogleIcon />
               </span>
             )}
-            {platforms.some((p) => p.toUpperCase().includes("TIKTOK")) && (
+            {platforms.some((p: string) => p.toUpperCase().includes("TIKTOK")) && (
               <span title="TikTok">
                 <TikTokIcon />
               </span>

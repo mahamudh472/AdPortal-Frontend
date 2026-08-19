@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Calendar,
-  Bell,
   ChevronDown,
   Sparkles,
   TrendingUp,
@@ -10,7 +9,6 @@ import {
   BarChart2,
   MoreVertical,
   Trash2,
-  Plus,
 } from "lucide-react";
 import {
   LineChart,

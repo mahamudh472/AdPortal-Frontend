@@ -15,7 +15,6 @@ import {
   UserX,
   ChevronDown,
   Search,
-  MoreVertical,
   ArrowRight,
   Crown,
 } from "lucide-react";
@@ -83,9 +82,11 @@ const DEFAULT_MEMBER_FALLBACK: TeamMember = {
   role: "OWNER",
   status: "ACTIVE",
   user: {
-    id: 1,
+    id: "1",
     email: "info.mahmud473@gmail.com",
     full_name: "Md. Mahmud Hasan",
+    phone_number: null,
+    is_admin: true,
   },
 };
 
@@ -578,18 +579,28 @@ const Team: React.FC = () => {
                       {/* ACTIONS */}
                       <td className="py-3.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => {
-                              if (isOwner) {
-                                toast.info("Owner account has full access permissions");
-                                return;
-                              }
-                            }}
-                            className="border border-slate-200 text-slate-700 font-semibold text-xs px-2.5 py-1 rounded-xl flex items-center gap-1 hover:bg-slate-50 cursor-pointer shadow-sm transition-colors"
-                          >
-                            <span>Manage</span>
-                            <ChevronDown className="w-3 h-3 text-slate-400" />
-                          </button>
+                          {isOwner || isSelf ? (
+                            <button
+                              onClick={() => toast.info("Owner / Self account permissions managed in settings")}
+                              className="border border-slate-200 text-slate-700 font-semibold text-xs px-2.5 py-1 rounded-xl flex items-center gap-1 hover:bg-slate-50 cursor-pointer shadow-sm transition-colors"
+                            >
+                              <span>Manage</span>
+                              <ChevronDown className="w-3 h-3 text-slate-400" />
+                            </button>
+                          ) : (
+                            <div className="flex items-center gap-1">
+                              <select
+                                value={memberRole.toUpperCase()}
+                                disabled={updatingId === member.id}
+                                onChange={(e) => handleRoleUpdate(member.id, e.target.value)}
+                                className="border border-slate-200 text-slate-700 font-semibold text-xs px-2 py-1 rounded-xl bg-white focus:outline-none cursor-pointer shadow-sm disabled:opacity-50"
+                              >
+                                <option value="ADMIN">Admin</option>
+                                <option value="MEMBER">Member</option>
+                              </select>
+                              {updatingId === member.id && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
+                            </div>
+                          )}
 
                           {!isSelf && !isOwner && (
                             <button

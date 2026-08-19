@@ -14,7 +14,6 @@ import {
   MousePointerClick,
   Info,
   Clock,
-  RotateCw,
   Flame,
   AlertTriangle,
   Leaf,
@@ -306,8 +305,6 @@ const AiTools: React.FC = () => {
 
   const headlinesList = results.filter((item) => item.type === "headlines");
   const primaryList = results.filter((item) => item.type === "primary");
-  const descriptionsList = results.filter((item) => item.type === "descriptions");
-  const ctasList = results.filter((item) => item.type === "ctas");
 
   const isAllSelected = results.length > 0 && results.every((item) => item.selected);
 
