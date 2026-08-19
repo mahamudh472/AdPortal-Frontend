@@ -36,6 +36,7 @@ const userItems = [
   { title: "AI Insights", url: "/user-dashboard/ai-tools", icon: Sparkles },
   { title: "Reports", url: "/user-dashboard/reports", icon: FileText },
   { title: "Team", url: "/user-dashboard/team", icon: Users },
+  { title: "Subscriptions", url: "/user-dashboard/subscriptions", icon: CreditCard },
   { title: "Settings", url: "/user-dashboard/settings", icon: Settings },
 ];
 

@@ -97,13 +97,14 @@ This document lists all properties and sections in the Admin Dashboard, User Man
 
 ---
 
-## 10. Reports Management (`src/components/Reports/`)
+## 11. Subscriptions & Billing (`src/components/Analytics/Subscriptions/`)
 
-### Report Insights & Scheduled Reports
+### Billing History & Download All Invoices
 - **API Gap**:
-  - The endpoint `GET /api/v1/analysis/reports/` returns historical generated report files, but does not provide aggregated report insights (`top_performing_campaign`, `total_spend`, `conversion_rate`, `impressions`) or scheduled report configurations (`weekly`, `monthly`, `campaign_performance`).
+  - The endpoint `GET /api/v1/finance/billing-history/` returns list of invoices, but lacks sub-period labels (e.g. `Apr 5 - May 5, 2026`) and batch ZIP download endpoint (`GET /api/v1/finance/invoices/download-all/`).
 - **Front-end Workaround**:
-  - Renders report insights summary card and interactive scheduled reports toggle cards alongside recent report file listings.
+  - Renders formatted date sub-periods and provides interactive mock handlers for downloading individual and bulk invoice PDFs.
+
 
 
 

@@ -376,6 +376,18 @@ class Invoice(models.Model):
 
 ---
 
+## 8. Subscriptions & Billing — `/finance/invoices/`
+
+### 8.1 Batch Invoices Download Endpoint
+
+**Change:** Create a **new endpoint**:
+
+**`GET /finance/invoices/download-all/?org_id={id}`**
+
+Returns a `ZIP` file archive containing all historical invoice PDFs for the organization.
+
+---
+
 ## Summary of Remaining Changes
 
 ### Modified Endpoints
@@ -396,6 +408,8 @@ class Invoice(models.Model):
 | `/admin/invoices/upcoming/` | `GET` | List upcoming invoices |
 | `/main/ai-optimization/settings/` | `GET`, `PATCH` | Retrieve and update auto-optimization settings |
 | `/analysis/scheduled-reports/` | `GET`, `POST`, `PATCH` | Manage automated report schedules |
+| `/finance/invoices/download-all/` | `GET` | Download all organization invoices in a single ZIP |
+
 
 
 
