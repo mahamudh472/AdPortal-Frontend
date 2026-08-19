@@ -226,6 +226,37 @@ class Invoice(models.Model):
 
 ---
 
+## 4. Campaigns Page — `/main/campaigns/`
+
+### 4.1 Metric Trend Indicators & Card Sparkline Data
+
+**Gap:** `/main/campaigns/` results items do not include trend calculations or historical sparkline arrays.
+
+**Change:** Extend campaign objects in `results` array:
+
+```json
+{
+  "count": 12,
+  "results": [
+    {
+      "id": 1,
+      "name": "Quas",
+      "status": "ACTIVE",
+      "objective": "ENGAGEMENT",
+      "ctr": 1.88,
+      "ctr_trend": "↑ 12.5%",
+      "conversions": 24,
+      "conversions_trend": "↑ 9.2%",
+      "roas": 2.4,
+      "roas_trend": "↑ 15.3%",
+      "sparkline_data": [10, 12, 14, 11, 15, 18, 24]
+    }
+  ]
+}
+```
+
+---
+
 ## Summary of Remaining Changes
 
 ### Modified Endpoints
@@ -235,6 +266,7 @@ class Invoice(models.Model):
 | `GET /admin/finance/` | Extend response | `sparklines`, `payment_summary` |
 | `GET /admin/platform-analysis/` | Extend response | `summary` object with aggregated stats & trends |
 | `GET /main/dashboard/` | Extend response | `platform_spends`, `performance_overview`, `budget_recommendation` |
+| `GET /main/campaigns/` | Extend response | `ctr_trend`, `conversions_trend`, `roas_trend`, `sparkline_data` |
 
 ### New Endpoints
 
@@ -262,6 +294,7 @@ class Invoice(models.Model):
    trend_percentage = "0%"                                      if previous == 0 and current == 0
    ```
 
-3. **Sparkline Arrays:** Should contain 6 data points representing the last 6 months (or weeks, depending on context). Values should be integers or floats representing the metric's absolute value for that period.
+3. **Sparkline Arrays:** Should contain 6-7 data points representing historical progression. Values should be integers or floats representing the metric's value for that period.
 
 4. **API Versioning:** All changes target `/api/v1/`. If breaking changes are needed, consider deploying behind a feature flag or creating `/api/v2/` variants.
+

@@ -95,6 +95,17 @@ This document lists all properties and sections in the Admin Dashboard, User Man
 - **Front-end Workaround**:
   - Visualized with custom AI Insight cards and Budget Recommendation donut gauge card.
 
+---
+
+## 7. Campaigns Page (`src/pages/Dashboard/UserDashboard/Campaigns/`)
+
+### Campaign Metric Trends & Sparkline Wave Curves
+- **API Gap**:
+  - The endpoint `GET /api/v1/main/campaigns/` returns raw metrics (`ctr`, `roas`, `conversions`), but does not return trend indicators (e.g., `ctr_trend: "↑ 12.5%"`, `conversions_trend: "↑ 9.2%"`, `roas_trend: "↑ 15.3%"`) or historical sparkline data arrays for card bottom wave graphics.
+- **Front-end Workaround**:
+  - Generates realistic status-aware trend percentages (`↑ 12.5%` for ACTIVE, `↓ 2.1%` for PAUSED, `0.00%` for DRAFT) and renders smooth vector SVG sparklines at the bottom of each campaign card.
+
+
 
 
 
