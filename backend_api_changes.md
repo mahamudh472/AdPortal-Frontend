@@ -151,6 +151,81 @@ class Invoice(models.Model):
 
 ---
 
+## 3. User Dashboard — `/main/dashboard/?org_id={org_id}`
+
+### 3.1 Platform Spend Cards & Sparklines
+
+**Gap:** Endpoint currently returns a single aggregate `total_spend` value. It does not provide per-platform spend metrics, trend comparisons, or mini sparkline series.
+
+**Change:** Add a `platform_spends` object:
+
+```json
+{
+  "platform_spends": {
+    "facebook": { "spend": 4230.55, "trend_percentage": "+12.5%", "sparkline": [18, 22, 15, 18, 10, 12] },
+    "google_ads": { "spend": 3215.45, "trend_percentage": "+8.3%", "sparkline": [20, 25, 18, 14, 10, 12] },
+    "tiktok": { "spend": 2815.20, "trend_percentage": "+15.7%", "sparkline": [22, 15, 18, 12, 16, 8] },
+    "instagram": { "spend": 1245.30, "trend_percentage": "+5.3%", "sparkline": [20, 25, 18, 20, 12, 14] },
+    "total_spend": { "spend": 11506.50, "trend_percentage": "+11.2%", "sparkline": [19, 22, 16, 18, 10, 14] }
+  }
+}
+```
+
+### 3.2 Performance Overview Time-Series & Metrics
+
+**Gap:** Performance overview metrics (Clicks, Conversions, Cost / Conv., ROAS) lack trend indicators, and the multi-line chart requires date-filtered multi-platform data points.
+
+**Change:** Add `performance_overview` object:
+
+```json
+{
+  "performance_overview": {
+    "impressions": { "value": 2450000, "trend_percentage": "+18.6%" },
+    "clicks": { "value": 145000, "trend_percentage": "+16.3%" },
+    "conversions": { "value": 3242, "trend_percentage": "+23.1%" },
+    "cost_per_conversion": { "value": 3.55, "trend_percentage": "+9.6%" },
+    "roas": { "value": 4.35, "trend_percentage": "+19.8%" },
+    "chart_series": [
+      { "date": "May 1", "facebook": 155, "google_ads": 110, "tiktok": 70, "instagram": 35 },
+      { "date": "May 6", "facebook": 125, "google_ads": 92, "tiktok": 58, "instagram": 28 },
+      { "date": "May 11", "facebook": 142, "google_ads": 105, "tiktok": 68, "instagram": 38 },
+      { "date": "May 16", "facebook": 162, "google_ads": 112, "tiktok": 68, "instagram": 48 },
+      { "date": "May 21", "facebook": 128, "google_ads": 96, "tiktok": 62, "instagram": 30 },
+      { "date": "May 26", "facebook": 156, "google_ads": 110, "tiktok": 64, "instagram": 38 },
+      { "date": "May 31", "facebook": 149, "google_ads": 104, "tiktok": 66, "instagram": 32 }
+    ]
+  }
+}
+```
+
+### 3.3 AI Insights Metadata & Budget Recommendation
+
+**Gap:** `ai_insights` items lack confidence ratings and projected ROI gains. No budget recommendation model exists.
+
+**Change:** Extend `ai_insights` and add `budget_recommendation`:
+
+```json
+{
+  "ai_insights": [
+    {
+      "id": 1,
+      "title": "Increase Budget on Google Ads",
+      "description": "Your Google Ads campaigns are performing 23% better than average. Consider increasing budget.",
+      "impact": "HIGH",
+      "confidence": 92,
+      "roi_boost": "+18% ROI"
+    }
+  ],
+  "budget_recommendation": {
+    "target_campaign": "Summer Sale 2024",
+    "performance_boost": "32% Better",
+    "potential_impact": 1250.00
+  }
+}
+```
+
+---
+
 ## Summary of Remaining Changes
 
 ### Modified Endpoints
@@ -159,6 +234,7 @@ class Invoice(models.Model):
 |---|---|---|
 | `GET /admin/finance/` | Extend response | `sparklines`, `payment_summary` |
 | `GET /admin/platform-analysis/` | Extend response | `summary` object with aggregated stats & trends |
+| `GET /main/dashboard/` | Extend response | `platform_spends`, `performance_overview`, `budget_recommendation` |
 
 ### New Endpoints
 
@@ -171,6 +247,7 @@ class Invoice(models.Model):
 | Model | Purpose |
 |---|---|
 | `Invoice` | Track upcoming and historical invoices (organization, amount, due_date, plan, status) |
+
 
 ---
 
