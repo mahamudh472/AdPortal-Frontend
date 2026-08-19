@@ -346,6 +346,36 @@ class Invoice(models.Model):
 
 ---
 
+## 7. Reports — `/analysis/scheduled-reports/`
+
+### 7.1 Scheduled Reports Endpoint
+
+**Change:** Create a **new endpoint**:
+
+**`GET/POST/PATCH /analysis/scheduled-reports/?org_id={id}`**
+
+```json
+{
+  "count": 3,
+  "results": [
+    {
+      "id": "s1",
+      "title": "Weekly Performance Report",
+      "schedule": "Every Monday at 9:00 AM",
+      "enabled": true
+    },
+    {
+      "id": "s2",
+      "title": "Monthly Summary Report",
+      "schedule": "1st of every month at 10:00 AM",
+      "enabled": true
+    }
+  ]
+}
+```
+
+---
+
 ## Summary of Remaining Changes
 
 ### Modified Endpoints
@@ -365,6 +395,8 @@ class Invoice(models.Model):
 |---|---|---|
 | `/admin/invoices/upcoming/` | `GET` | List upcoming invoices |
 | `/main/ai-optimization/settings/` | `GET`, `PATCH` | Retrieve and update auto-optimization settings |
+| `/analysis/scheduled-reports/` | `GET`, `POST`, `PATCH` | Manage automated report schedules |
+
 
 
 ### New Database Models

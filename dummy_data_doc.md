@@ -97,13 +97,14 @@ This document lists all properties and sections in the Admin Dashboard, User Man
 
 ---
 
-## 9. Platform Analytics (`src/components/Analytics/`)
+## 10. Reports Management (`src/components/Reports/`)
 
-### Performance by Device & Insight Highlights
+### Report Insights & Scheduled Reports
 - **API Gap**:
-  - The endpoint `GET /api/v1/main/analytics/` returns top metrics, monthly performance, and platform spend, but does not provide device breakdown (`Mobile`, `Desktop`, `Tablet`) or performance highlight cards (e.g. `Top Performing Platform`, `Most Conversions`, `Best Click Rate`, `Lowest Cost / Conversion`).
+  - The endpoint `GET /api/v1/analysis/reports/` returns historical generated report files, but does not provide aggregated report insights (`top_performing_campaign`, `total_spend`, `conversion_rate`, `impressions`) or scheduled report configurations (`weekly`, `monthly`, `campaign_performance`).
 - **Front-end Workaround**:
-  - Renders device performance bar chart with sample data and fallback placeholder cards (`No data available / Run campaigns to see insights`).
+  - Renders report insights summary card and interactive scheduled reports toggle cards alongside recent report file listings.
+
 
 
 
