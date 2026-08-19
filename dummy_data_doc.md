@@ -97,13 +97,14 @@ This document lists all properties and sections in the Admin Dashboard, User Man
 
 ---
 
-## 7. Campaigns Page (`src/pages/Dashboard/UserDashboard/Campaigns/`)
+## 8. AI Tools & Optimization (`src/components/AITools/`)
 
-### Campaign Metric Trends & Sparkline Wave Curves
+### AI Optimization Control Center & Insights
 - **API Gap**:
-  - The endpoint `GET /api/v1/main/campaigns/` returns raw metrics (`ctr`, `roas`, `conversions`), but does not return trend indicators (e.g., `ctr_trend: "↑ 12.5%"`, `conversions_trend: "↑ 9.2%"`, `roas_trend: "↑ 15.3%"`) or historical sparkline data arrays for card bottom wave graphics.
+  - The API endpoint `GET /api/v1/main/ai-insights/` returns basic title/description strings, but lacks structured fields for priority impact levels (`HIGH`, `MEDIUM`, `LOW`, `INFO`), metric deltas (e.g. `+18% Conversions`, `-10% CPA`), campaign counts, action types (`apply`, `fix`, `generate`, `create`), or auto-optimization settings (`mode: "balanced"`, `frequency: "daily"`, `potential_impact: { conversions: "+25%", cpa: "-15%", roas: "+18%" }`).
 - **Front-end Workaround**:
-  - Generates realistic status-aware trend percentages (`↑ 12.5%` for ACTIVE, `↓ 2.1%` for PAUSED, `0.00%` for DRAFT) and renders smooth vector SVG sparklines at the bottom of each campaign card.
+  - Renders priority-coded insight cards with left accent borders, action buttons, interactive control center mode switches (`Conservative`, `Balanced`, `Aggressive`), and potential 30-day ROI impact summary metrics.
+
 
 
 

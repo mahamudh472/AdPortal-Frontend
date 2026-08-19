@@ -257,6 +257,63 @@ class Invoice(models.Model):
 
 ---
 
+## 5. AI Optimization — `/main/ai-insights/` & `/main/ai-optimization/settings/`
+
+### 5.1 AI Insight Items Payload
+
+**Gap:** `/main/ai-insights/` results do not return impact levels, metrics arrays, or action types.
+
+**Change:** Extend `/main/ai-insights/` JSON structure:
+
+```json
+{
+  "count": 5,
+  "last_optimization": "2026-08-19T08:30:00Z",
+  "summary": {
+    "active_insights": 12,
+    "high_priority": 5,
+    "applied_today": 3,
+    "est_savings": 243.00
+  },
+  "potential_impact": {
+    "conversions": "+25%",
+    "cpa": "-15%",
+    "roas": "+18%"
+  },
+  "results": [
+    {
+      "id": "opt-1",
+      "impact": "HIGH",
+      "title": "Increase TikTok budget by +20%",
+      "description": "TikTok is delivering the highest ROAS. Increasing budget can drive more conversions.",
+      "metrics": [
+        { "label": "Conversions", "value": "+18%", "is_positive": true },
+        { "label": "CPA", "value": "-10%", "is_positive": true }
+      ],
+      "campaigns_count": 2,
+      "action_text": "Apply Suggestion",
+      "action_type": "apply"
+    }
+  ]
+}
+```
+
+### 5.2 Auto-Optimization Settings Endpoint
+
+**Change:** Create a **new endpoint**:
+
+**`GET/PATCH /main/ai-optimization/settings/?org_id={id}`**
+
+```json
+{
+  "auto_optimization": true,
+  "optimization_mode": "balanced",
+  "optimization_frequency": "Daily Optimization"
+}
+```
+
+---
+
 ## Summary of Remaining Changes
 
 ### Modified Endpoints
@@ -267,12 +324,15 @@ class Invoice(models.Model):
 | `GET /admin/platform-analysis/` | Extend response | `summary` object with aggregated stats & trends |
 | `GET /main/dashboard/` | Extend response | `platform_spends`, `performance_overview`, `budget_recommendation` |
 | `GET /main/campaigns/` | Extend response | `ctr_trend`, `conversions_trend`, `roas_trend`, `sparkline_data` |
+| `GET /main/ai-insights/` | Extend response | `impact`, `metrics`, `campaigns_count`, `action_type`, `summary` |
 
 ### New Endpoints
 
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/admin/invoices/upcoming/` | `GET` | List upcoming invoices |
+| `/main/ai-optimization/settings/` | `GET`, `PATCH` | Retrieve and update auto-optimization settings |
+
 
 ### New Database Models
 
