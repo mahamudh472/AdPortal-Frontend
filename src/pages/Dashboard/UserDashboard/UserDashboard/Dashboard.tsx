@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Calendar,
@@ -9,6 +9,7 @@ import {
   BarChart2,
   MoreVertical,
   Trash2,
+  Check,
 } from "lucide-react";
 import {
   LineChart,
@@ -65,58 +66,90 @@ export const InstagramIcon = ({ className = "w-5 h-5" }: { className?: string })
   </svg>
 );
 
+// Dynamic Sparkline SVG path generator
+const generateSparklinePath = (points?: number[]): string => {
+  if (!points || points.length === 0) {
+    return "M 0 15 Q 25 18 50 15 T 100 15";
+  }
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const range = max - min || 1;
+  const width = 100;
+  const height = 24;
+  const padding = 3;
+
+  const coords = points.map((p, i) => {
+    const x = (i / (points.length - 1)) * width;
+    const y = height - padding - ((p - min) / range) * (height - 2 * padding);
+    return [x, y];
+  });
+
+  if (coords.length === 1) {
+    return `M 0 ${coords[0][1]} L 100 ${coords[0][1]}`;
+  }
+
+  let d = `M ${coords[0][0].toFixed(1)} ${coords[0][1].toFixed(1)}`;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const [x0, y0] = coords[i];
+    const [x1, y1] = coords[i + 1];
+    const mx = ((x0 + x1) / 2).toFixed(1);
+    const my = ((y0 + y1) / 2).toFixed(1);
+    d += ` Q ${x0.toFixed(1)} ${y0.toFixed(1)} ${mx} ${my}`;
+  }
+  const last = coords[coords.length - 1];
+  d += ` T ${last[0].toFixed(1)} ${last[1].toFixed(1)}`;
+  return d;
+};
+
 // Sparkline SVG renderer
 const Sparkline = ({
   stroke,
   gradId,
-  pathD,
+  points,
 }: {
   stroke: string;
   gradId: string;
-  pathD: string;
-}) => (
-  <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 30" preserveAspectRatio="none">
-    <defs>
-      <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor={stroke} stopOpacity="0.25" />
-        <stop offset="100%" stopColor={stroke} stopOpacity="0.0" />
-      </linearGradient>
-    </defs>
-    <path d={pathD} fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
-    <path d={`${pathD} L 100 30 L 0 30 Z`} fill={`url(#${gradId})`} />
-  </svg>
-);
+  points?: number[];
+}) => {
+  const pathD = generateSparklinePath(points);
+  return (
+    <svg className="w-full h-8 overflow-visible" viewBox="0 0 100 30" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0.0" />
+        </linearGradient>
+      </defs>
+      <path d={pathD} fill="none" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+      <path d={`${pathD} L 100 30 L 0 30 Z`} fill={`url(#${gradId})`} />
+    </svg>
+  );
+};
 
-// Custom Chart Tooltip
+// Dynamic Chart Tooltip
 const CustomChartTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white border border-slate-100 rounded-xl p-3 shadow-xl text-xs space-y-1.5 min-w-[140px] z-50">
-        <div className="text-slate-400 font-medium mb-1.5">{label}, 2024</div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="w-2 h-2 rounded-full bg-blue-600"></span> Facebook
-          </span>
-          <span className="font-semibold text-slate-900">162K</span>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Google Ads
-          </span>
-          <span className="font-semibold text-slate-900">112K</span>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="w-2 h-2 rounded-full bg-slate-900"></span> TikTok
-          </span>
-          <span className="font-semibold text-slate-900">68K</span>
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-1.5 text-slate-700">
-            <span className="w-2 h-2 rounded-full bg-pink-500"></span> Instagram
-          </span>
-          <span className="font-semibold text-slate-900">48K</span>
-        </div>
+        <div className="text-slate-400 font-medium mb-1.5">{label}</div>
+        {payload.map((item: any, idx: number) => {
+          const dotColor = item.color || "#2563eb";
+          return (
+            <div key={idx} className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-1.5 text-slate-700">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: dotColor }}></span>
+                {item.name}
+              </span>
+              <span className="font-semibold text-slate-900">
+                {typeof item.value === "number"
+                  ? item.value >= 1000
+                    ? `${(item.value / 1000).toFixed(0)}K`
+                    : item.value
+                  : item.value}
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -124,14 +157,99 @@ const CustomChartTooltip = ({ active, payload, label }: any) => {
 };
 
 // Types for backend response
-interface DashboardData {
+export interface PlatformCardData {
+  name: string;
+  platform: string;
+  spend: number;
+  formatted_spend: string;
+  delta: string;
+  change_percent: number;
+  is_positive: boolean;
+  sub_label: string;
+  color: string;
+  sparkline: number[];
+}
+
+export interface OverviewMetricData {
+  id: string;
+  label: string;
+  value: string;
+  raw_value: number;
+  delta: string;
+  change_percent: number;
+  is_positive: boolean;
+}
+
+export interface ChartDataPoint {
+  date: string;
+  Facebook?: number;
+  GoogleAds?: number;
+  TikTok?: number;
+  Instagram?: number;
+  [key: string]: any;
+}
+
+export interface TopCampaignData {
+  id: number;
+  name: string;
+  platform: string;
+  platforms: string[];
+  spend: string;
+  raw_spend: number;
+  conversions: string;
+  raw_conversions: number;
+  roas: string;
+  raw_roas: number;
+  ctr: string;
+  raw_ctr: number;
+  status: string;
+}
+
+export interface AIInsightData {
+  id: number;
+  title: string;
+  description: string;
+  impact: string;
+  impact_badge: string;
+  confidence: number;
+  confidence_text: string;
+  roi_impact: string;
+  icon_type: string;
+  created_at: string;
+}
+
+export interface BudgetRecommendationData {
+  campaign_id: number;
+  campaign_name: string;
+  action_text: string;
+  description: string;
+  badge_percent: string;
+  badge_label: string;
+  potential_impact: string;
+  progress_percent: number;
+  recommended_budget_increase: number;
+}
+
+export interface DateRangeData {
+  selected: string;
+  label: string;
+  comparison_label: string;
+  start_date: string;
+  end_date: string;
+}
+
+export interface DashboardResponse {
+  date_range?: DateRangeData;
+  platform_cards?: PlatformCardData[];
+  overview_metrics?: OverviewMetricData[];
+  chart_data?: ChartDataPoint[];
+  top_campaigns?: TopCampaignData[];
+  ai_insights?: AIInsightData[];
+  budget_recommendation?: BudgetRecommendationData;
   total_spend?: number;
   impressions?: number;
   click_rate?: number;
   roas?: number;
-  spend_overview?: Record<string, any>;
-  ai_insights?: Array<any>;
-  recent_campaigns?: Array<any>;
 }
 
 // Delete Confirmation Modal
@@ -194,11 +312,23 @@ const DeleteConfirmationModal = ({
   );
 };
 
+const TIME_RANGE_OPTIONS = [
+  { value: "last_7_days", label: "Last 7 Days" },
+  { value: "last_30_days", label: "Last 30 Days" },
+  { value: "this_month", label: "This Month" },
+  { value: "last_month", label: "Last Month" },
+  { value: "all_time", label: "All Time" },
+];
+
 const UserDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [_loading, setLoading] = useState<boolean>(true);
   const [deleteLoading, setDeleteLoading] = useState<boolean>(false);
+  const [timeRange, setTimeRange] = useState<string>("last_30_days");
+  const [showTimeRangeDropdown, setShowTimeRangeDropdown] = useState<boolean>(false);
+  const [applyingBudget, setApplyingBudget] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Delete modal state
   const [deleteModal, setDeleteModal] = useState<{
@@ -233,24 +363,44 @@ const UserDashboard: React.FC = () => {
 
   const orgId = getOrgId();
 
+  // Close dropdown on outside click
   useEffect(() => {
-    if (orgId) {
-      fetchDashboardData();
-    } else {
-      setLoading(false);
-    }
-  }, [orgId]);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowTimeRangeDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (selectedRange = timeRange) => {
+    if (!orgId) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
-      const response = await api.get(`/main/dashboard/?org_id=${orgId}`);
+      const response = await api.get(`/main/dashboard/?org_id=${orgId}&time_range=${selectedRange}`);
       setDashboardData(response.data);
     } catch (err: any) {
       console.error("Error fetching dashboard data:", err);
     } finally {
       setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    if (orgId) {
+      fetchDashboardData(timeRange);
+    } else {
+      setLoading(false);
+    }
+  }, [orgId, timeRange]);
+
+  const handleTimeRangeSelect = (rangeValue: string) => {
+    setTimeRange(rangeValue);
+    setShowTimeRangeDropdown(false);
   };
 
   const handleDeleteClick = (campaignId: number, campaignName: string) => {
@@ -270,7 +420,7 @@ const UserDashboard: React.FC = () => {
         if (!prev) return prev;
         return {
           ...prev,
-          recent_campaigns: (prev.recent_campaigns || []).filter(
+          top_campaigns: (prev.top_campaigns || []).filter(
             (c) => c.id !== deleteModal.campaignId
           ),
         };
@@ -284,147 +434,44 @@ const UserDashboard: React.FC = () => {
     }
   };
 
-  // Top platform spend cards data
-  const platformCards = [
-    {
-      name: "Facebook",
-      icon: <FacebookIcon className="w-5 h-5" />,
-      spend: "$4,230.55",
-      delta: "↑ 12.5%",
-      subLabel: "vs Apr 1 - Apr 30",
-      stroke: "#2563eb",
-      gradId: "fb-spark-dash",
-      pathD: "M 0 18 Q 15 22 25 15 T 50 18 T 75 10 T 100 12",
-    },
-    {
-      name: "Google Ads",
-      icon: <GoogleAdsIcon className="w-5 h-5" />,
-      spend: "$3,215.45",
-      delta: "↑ 8.3%",
-      subLabel: "vs Apr 1 - Apr 30",
-      stroke: "#10b981",
-      gradId: "goog-spark-dash",
-      pathD: "M 0 20 Q 20 25 35 18 T 65 14 T 85 10 T 100 12",
-    },
-    {
-      name: "TikTok",
-      icon: <TikTokIcon className="w-5 h-5" />,
-      spend: "$2,815.20",
-      delta: "↑ 15.7%",
-      subLabel: "vs Apr 1 - Apr 30",
-      stroke: "#1e293b",
-      gradId: "tt-spark-dash",
-      pathD: "M 0 22 Q 15 15 30 18 T 60 12 T 80 16 T 100 8",
-    },
-    {
-      name: "Instagram",
-      icon: <InstagramIcon className="w-5 h-5" />,
-      spend: "$1,245.30",
-      delta: "↑ 5.3%",
-      subLabel: "vs Apr 1 - Apr 30",
-      stroke: "#ec4899",
-      gradId: "ig-spark-dash",
-      pathD: "M 0 20 Q 25 25 40 18 T 70 20 T 90 12 T 100 14",
-    },
-    {
-      name: "Total Spend",
-      icon: (
-        <div className="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center text-blue-600">
-          <BarChart2 className="w-4 h-4" />
-        </div>
-      ),
-      spend: dashboardData?.total_spend
-        ? `$${dashboardData.total_spend.toLocaleString()}`
-        : "$11,506.50",
-      delta: "↑ 11.2%",
-      subLabel: "vs Apr 1 - Apr 30",
-      stroke: "#2563eb",
-      gradId: "tot-spark-dash",
-      pathD: "M 0 19 Q 20 22 40 16 T 70 18 T 90 10 T 100 14",
-    },
-  ];
+  const handleApplyRecommendation = async () => {
+    const rec = dashboardData?.budget_recommendation;
+    if (!orgId) return;
+    setApplyingBudget(true);
+    try {
+      const res = await api.post(`/main/apply-budget-recommendation/?org_id=${orgId}`, {
+        campaign_id: rec?.campaign_id,
+        increase_amount: rec?.recommended_budget_increase || 50.0,
+      });
+      toast.success(res.data?.message || "Budget recommendation applied successfully!");
+      fetchDashboardData(timeRange);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.response?.data?.error || "Failed to apply recommendation");
+    } finally {
+      setApplyingBudget(false);
+    }
+  };
 
-  // Performance Overview Metrics
-  const overviewMetrics = [
-    {
-      label: "Impressions",
-      value: dashboardData?.impressions ? `${(dashboardData.impressions / 1000000).toFixed(2)}M` : "2.45M",
-      delta: "▲ 18.6%",
-    },
-    { label: "Clicks", value: "145K", delta: "▲ 16.3%" },
-    { label: "Conversions", value: "3,242", delta: "▲ 23.1%" },
-    { label: "Cost / Conv.", value: "$3.55", delta: "▲ 9.6%" },
-    {
-      label: "ROAS",
-      value: dashboardData?.roas ? `${dashboardData.roas.toFixed(2)}x` : "4.35x",
-      delta: "▲ 19.8%",
-    },
-  ];
+  const getPlatformIcon = (platformKey: string, className = "w-5 h-5") => {
+    const p = platformKey?.toLowerCase() || "";
+    if (p.includes("facebook") || p === "meta") return <FacebookIcon className={className} />;
+    if (p.includes("google")) return <GoogleAdsIcon className={className} />;
+    if (p.includes("tiktok")) return <TikTokIcon className={className} />;
+    if (p.includes("instagram")) return <InstagramIcon className={className} />;
+    return (
+      <div className="w-6 h-6 rounded-md bg-blue-100 flex items-center justify-center text-blue-600">
+        <BarChart2 className="w-4 h-4" />
+      </div>
+    );
+  };
 
-  // Line Chart Data
-  const chartData = [
-    { date: "May 1", Facebook: 155, GoogleAds: 110, TikTok: 70, Instagram: 35 },
-    { date: "May 6", Facebook: 125, GoogleAds: 92, TikTok: 58, Instagram: 28 },
-    { date: "May 11", Facebook: 142, GoogleAds: 105, TikTok: 68, Instagram: 38 },
-    { date: "May 16", Facebook: 162, GoogleAds: 112, TikTok: 68, Instagram: 48 },
-    { date: "May 21", Facebook: 128, GoogleAds: 96, TikTok: 62, Instagram: 30 },
-    { date: "May 26", Facebook: 156, GoogleAds: 110, TikTok: 64, Instagram: 38 },
-    { date: "May 31", Facebook: 149, GoogleAds: 104, TikTok: 66, Instagram: 32 },
-  ];
-
-  // Top Campaigns Data
-  const campaignsList = [
-    {
-      id: 1,
-      name: "Summer Sale 2024",
-      platform: "Facebook",
-      icon: <FacebookIcon className="w-5 h-5" />,
-      spend: "$1,250.45",
-      conversions: "452",
-      roas: "4.62x",
-      ctr: "2.35%",
-    },
-    {
-      id: 2,
-      name: "Search | Brand Campaign",
-      platform: "Google Ads",
-      icon: <GoogleAdsIcon className="w-5 h-5" />,
-      spend: "$980.30",
-      conversions: "320",
-      roas: "5.11x",
-      ctr: "3.02%",
-    },
-    {
-      id: 3,
-      name: "TikTok | New Collection",
-      platform: "TikTok",
-      icon: <TikTokIcon className="w-5 h-5" />,
-      spend: "$875.20",
-      conversions: "210",
-      roas: "3.85x",
-      ctr: "2.15%",
-    },
-    {
-      id: 4,
-      name: "Instagram | Spring Promo",
-      platform: "Instagram",
-      icon: <InstagramIcon className="w-5 h-5" />,
-      spend: "$645.10",
-      conversions: "128",
-      roas: "2.98x",
-      ctr: "1.85%",
-    },
-    {
-      id: 5,
-      name: "Remarketing Campaign",
-      platform: "Facebook",
-      icon: <FacebookIcon className="w-5 h-5" />,
-      spend: "$420.25",
-      conversions: "98",
-      roas: "2.45x",
-      ctr: "1.45%",
-    },
-  ];
+  const platformCards = dashboardData?.platform_cards || [];
+  const overviewMetrics = dashboardData?.overview_metrics || [];
+  const chartData = dashboardData?.chart_data || [];
+  const campaignsList = dashboardData?.top_campaigns || [];
+  const aiInsights = dashboardData?.ai_insights || [];
+  const budgetRec = dashboardData?.budget_recommendation;
+  const dateRangeLabel = dashboardData?.date_range?.label || "May 1 – May 31, 2024";
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 py-3 space-y-6">
@@ -448,41 +495,75 @@ const UserDashboard: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Date Picker Selector */}
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors">
+        <div className="flex items-center gap-3 relative" ref={dropdownRef}>
+          {/* Dynamic Date Picker Selector */}
+          <button
+            onClick={() => setShowTimeRangeDropdown((prev) => !prev)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50 transition-colors cursor-pointer"
+          >
             <Calendar className="w-4 h-4 text-slate-400" />
-            <span>May 1 – May 31, 2024</span>
+            <span>{dateRangeLabel}</span>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
+
+          {showTimeRangeDropdown && (
+            <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1.5 overflow-hidden">
+              {TIME_RANGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleTimeRangeSelect(opt.value)}
+                  className={`w-full text-left px-3.5 py-2 text-xs flex items-center justify-between transition-colors ${
+                    timeRange === opt.value
+                      ? "bg-blue-50 text-blue-600 font-semibold"
+                      : "text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span>{opt.label}</span>
+                  {timeRange === opt.value && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* TOP PLATFORM SPEND CARDS GRID (5 CARDS) */}
+      {/* TOP PLATFORM SPEND CARDS GRID (DYNAMIC FROM BACKEND) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {platformCards.map((card, idx) => (
           <div
-            key={idx}
+            key={card.platform || idx}
             className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden"
           >
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  {card.icon}
+                  {getPlatformIcon(card.platform)}
                   <span className="text-xs font-semibold text-slate-700">{card.name}</span>
                 </div>
-                <span className="bg-emerald-50 text-emerald-600 font-semibold text-[11px] px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                <span
+                  className={`font-semibold text-[11px] px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
+                    card.is_positive
+                      ? "bg-emerald-50 text-emerald-600"
+                      : "bg-red-50 text-red-600"
+                  }`}
+                >
                   {card.delta}
                 </span>
               </div>
-              <div className="text-xl font-bold text-slate-900 tracking-tight">{card.spend}</div>
+              <div className="text-xl font-bold text-slate-900 tracking-tight">
+                {card.formatted_spend}
+              </div>
               <div className="flex items-center justify-between text-[11px] text-slate-400 mt-0.5">
                 <span>Spend</span>
-                <span>{card.subLabel}</span>
+                <span>{card.sub_label}</span>
               </div>
             </div>
             <div className="mt-3 -mb-2 -mx-4">
-              <Sparkline stroke={card.stroke} gradId={card.gradId} pathD={card.pathD} />
+              <Sparkline
+                stroke={card.color || "#2563eb"}
+                gradId={`dash-spark-${card.platform || idx}`}
+                points={card.sparkline}
+              />
             </div>
           </div>
         ))}
@@ -496,26 +577,29 @@ const UserDashboard: React.FC = () => {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900">Performance Overview</h2>
-              <button className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 transition-colors">
-                <span>vs. Apr 1 – Apr 30, 2024</span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-              </button>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+                <span>{dashboardData?.date_range?.comparison_label || "vs. Comparison Period"}</span>
+              </div>
             </div>
 
-            {/* 5 Metric Summary Chips */}
+            {/* Dynamic Metric Summary Chips */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
               {overviewMetrics.map((m, idx) => (
-                <div key={idx} className="bg-slate-50/70 border border-slate-100 rounded-xl p-3">
+                <div key={m.id || idx} className="bg-slate-50/70 border border-slate-100 rounded-xl p-3">
                   <div className="text-xs text-slate-500 font-medium">{m.label}</div>
                   <div className="text-lg font-bold text-slate-900 mt-1">{m.value}</div>
-                  <div className="text-[11px] font-semibold text-emerald-600 flex items-center gap-0.5 mt-0.5">
+                  <div
+                    className={`text-[11px] font-semibold flex items-center gap-0.5 mt-0.5 ${
+                      m.is_positive ? "text-emerald-600" : "text-red-500"
+                    }`}
+                  >
                     {m.delta}
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Recharts Interactive Multi-Line Chart */}
+            {/* Recharts Interactive Multi-Line Chart (Dynamic from Backend) */}
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -590,7 +674,7 @@ const UserDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* TOP CAMPAIGNS TABLE CARD */}
+          {/* TOP CAMPAIGNS TABLE CARD (DYNAMIC FROM BACKEND) */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900">Top Campaigns</h2>
@@ -616,31 +700,59 @@ const UserDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {campaignsList.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 font-semibold text-slate-800">{c.name}</td>
-                      <td className="py-3.5">
-                        <div className="flex items-center gap-1.5">{c.icon}</div>
-                      </td>
-                      <td className="py-3.5 text-slate-700 font-medium">{c.spend}</td>
-                      <td className="py-3.5 text-slate-700 font-medium">{c.conversions}</td>
-                      <td className="py-3.5 text-slate-700 font-medium">{c.roas}</td>
-                      <td className="py-3.5 text-slate-700 font-medium">{c.ctr}</td>
-                      <td className="py-3.5 text-right">
-                        <div className="flex items-center justify-end gap-1.5 text-slate-400">
-                          <button className="p-1 hover:text-blue-600 transition-colors">
-                            <BarChart2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(c.id, c.name)}
-                            className="p-1 hover:text-red-600 transition-colors"
-                          >
-                            <MoreVertical className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                  {campaignsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-400">
+                        No campaigns found.{" "}
+                        <Link
+                          to="/user-dashboard/campaigns-create/step-1"
+                          className="text-blue-600 underline font-medium"
+                        >
+                          Create your first campaign
+                        </Link>
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    campaignsList.map((c) => (
+                      <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3.5 font-semibold text-slate-800">
+                          <Link
+                            to={`/user-dashboard/campaigns-view-details/${c.id}`}
+                            className="hover:text-blue-600 transition-colors"
+                          >
+                            {c.name}
+                          </Link>
+                        </td>
+                        <td className="py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            {getPlatformIcon(c.platform)}
+                          </div>
+                        </td>
+                        <td className="py-3.5 text-slate-700 font-medium">{c.spend}</td>
+                        <td className="py-3.5 text-slate-700 font-medium">{c.conversions}</td>
+                        <td className="py-3.5 text-slate-700 font-medium">{c.roas}</td>
+                        <td className="py-3.5 text-slate-700 font-medium">{c.ctr}</td>
+                        <td className="py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5 text-slate-400">
+                            <button
+                              onClick={() => navigate(`/user-dashboard/campaigns-view-details/${c.id}`)}
+                              className="p-1 hover:text-blue-600 transition-colors cursor-pointer"
+                              title="View Campaign Details"
+                            >
+                              <BarChart2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(c.id, c.name)}
+                              className="p-1 hover:text-red-600 transition-colors cursor-pointer"
+                              title="Delete Campaign"
+                            >
+                              <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -649,7 +761,7 @@ const UserDashboard: React.FC = () => {
 
         {/* RIGHT COLUMN (AI INSIGHTS + BUDGET RECOMMENDATION) */}
         <div className="lg:col-span-1 space-y-6">
-          {/* ✨ AI INSIGHTS CARD */}
+          {/* ✨ AI INSIGHTS CARD (DYNAMIC FROM BACKEND) */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-1.5">
@@ -666,151 +778,157 @@ const UserDashboard: React.FC = () => {
 
             {/* Recommendation Cards */}
             <div className="space-y-3.5">
-              {/* Insight 1 */}
-              <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-3.5 space-y-2">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-emerald-100/70 text-emerald-600 shrink-0 mt-0.5">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900">Increase Budget on Google Ads</h3>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      Your Google Ads campaigns are performing 23% better than average. Consider increasing budget.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-1 text-[11px]">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-emerald-50 text-emerald-600 font-semibold px-2 py-0.5 rounded text-[10px]">
-                      High Impact
-                    </span>
-                    <span className="text-slate-400">Confidence: 92%</span>
-                  </div>
-                  <span className="font-bold text-emerald-600">+18% ROI</span>
-                </div>
-              </div>
+              {aiInsights.map((ins, idx) => {
+                const isHigh = ins.impact === "HIGH";
+                const isMedium = ins.impact === "MEDIUM";
 
-              {/* Insight 2 */}
-              <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-3.5 space-y-2">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-sky-100/70 text-sky-600 shrink-0 mt-0.5">
-                    <Target className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900">Improve ROAS on TikTok</h3>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      Some TikTok ad sets have ROAS below 2.0x. Optimize creatives and targeting.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-1 text-[11px]">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-sky-50 text-sky-600 font-semibold px-2 py-0.5 rounded text-[10px]">
-                      Medium Impact
-                    </span>
-                    <span className="text-slate-400">Confidence: 78%</span>
-                  </div>
-                  <span className="font-bold text-sky-600">+12% ROI</span>
-                </div>
-              </div>
+                const iconBg = isHigh
+                  ? "bg-emerald-100/70 text-emerald-600"
+                  : isMedium
+                  ? "bg-sky-100/70 text-sky-600"
+                  : "bg-purple-100/70 text-purple-600";
 
-              {/* Insight 3 */}
-              <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-3.5 space-y-2">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-xl bg-purple-100/70 text-purple-600 shrink-0 mt-0.5">
-                    <BarChart2 className="w-4 h-4" />
+                const badgeBg = isHigh
+                  ? "bg-emerald-50 text-emerald-600"
+                  : isMedium
+                  ? "bg-sky-50 text-sky-600"
+                  : "bg-purple-50 text-purple-600";
+
+                const roiColor = isHigh
+                  ? "text-emerald-600"
+                  : isMedium
+                  ? "text-sky-600"
+                  : "text-purple-600";
+
+                return (
+                  <div
+                    key={ins.id || idx}
+                    className="bg-slate-50/70 border border-slate-100 rounded-xl p-3.5 space-y-2"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-xl shrink-0 mt-0.5 ${iconBg}`}>
+                        {ins.icon_type === "trend" ? (
+                          <TrendingUp className="w-4 h-4" />
+                        ) : ins.icon_type === "target" ? (
+                          <Target className="w-4 h-4" />
+                        ) : (
+                          <BarChart2 className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-slate-900">{ins.title}</h3>
+                        <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                          {ins.description}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-1 text-[11px]">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-semibold px-2 py-0.5 rounded text-[10px] ${badgeBg}`}>
+                          {ins.impact_badge}
+                        </span>
+                        {ins.confidence_text && (
+                          <span className="text-slate-400">{ins.confidence_text}</span>
+                        )}
+                      </div>
+                      {ins.roi_impact && (
+                        <span className={`font-bold ${roiColor}`}>{ins.roi_impact}</span>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900">Best Time to Advertise</h3>
-                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                      Your ads perform best between 10AM - 2PM. Consider increasing bids during this time.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-1 text-[11px]">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-purple-50 text-purple-600 font-semibold px-2 py-0.5 rounded text-[10px]">
-                      Tip
-                    </span>
-                    <span className="text-slate-400">Confidence: 85%</span>
-                  </div>
-                  <span className="font-bold text-purple-600">+8% ROI</span>
-                </div>
-              </div>
+                );
+              })}
             </div>
 
             {/* View All AI Insights Button */}
             <button
               onClick={() => navigate("/user-dashboard/ai-tools")}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-4 h-4" />
               <span>View All AI Insights</span>
             </button>
           </div>
 
-          {/* ✨ BUDGET RECOMMENDATION CARD */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-5">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-1.5">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              <span>Budget Recommendation</span>
-            </h2>
+          {/* ✨ BUDGET RECOMMENDATION CARD (DYNAMIC FROM BACKEND) */}
+          {budgetRec && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-5">
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-blue-600" />
+                <span>Budget Recommendation</span>
+              </h2>
 
-            <div className="flex items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="text-xs text-slate-600">Increase budget on</div>
-                <div className="text-sm font-bold text-blue-600">Summer Sale 2024</div>
-                <p className="text-[11px] text-slate-500 leading-snug mt-1">
-                  This campaign is performing 32% better than similar campaigns.
-                </p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="text-xs text-slate-600">{budgetRec.action_text}</div>
+                  <div className="text-sm font-bold text-blue-600">{budgetRec.campaign_name}</div>
+                  <p className="text-[11px] text-slate-500 leading-snug mt-1">
+                    {budgetRec.description}
+                  </p>
+                </div>
+
+                {/* Donut gauge graphic */}
+                <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      className="text-slate-100"
+                      strokeWidth="3.5"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                    <path
+                      className="text-blue-600"
+                      strokeDasharray={`${budgetRec.progress_percent || 32}, 100`}
+                      strokeWidth="3.5"
+                      strokeLinecap="round"
+                      stroke="currentColor"
+                      fill="none"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    />
+                  </svg>
+                  <div className="absolute flex flex-col items-center justify-center text-center">
+                    <span className="text-xs font-extrabold text-slate-900 leading-none">
+                      {budgetRec.badge_percent}
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-medium leading-none mt-0.5">
+                      {budgetRec.badge_label}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Donut gauge graphic */}
-              <div className="relative w-16 h-16 shrink-0 flex items-center justify-center">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    className="text-slate-100"
-                    strokeWidth="3.5"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <path
-                    className="text-blue-600"
-                    strokeDasharray="32, 100"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                    stroke="currentColor"
-                    fill="none"
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <div className="absolute flex flex-col items-center justify-center text-center">
-                  <span className="text-xs font-extrabold text-slate-900 leading-none">32%</span>
-                  <span className="text-[9px] text-slate-400 font-medium leading-none mt-0.5">Better</span>
+              {/* Apply Recommendation Button */}
+              <button
+                onClick={handleApplyRecommendation}
+                disabled={applyingBudget}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+              >
+                {applyingBudget ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span>Applying...</span>
+                  </>
+                ) : (
+                  <span>Apply Recommendation</span>
+                )}
+              </button>
+
+              {/* Potential Impact Bar */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Potential Impact</span>
+                  <span className="font-bold text-emerald-600">{budgetRec.potential_impact}</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${budgetRec.progress_percent || 75}%` }}
+                  ></div>
                 </div>
               </div>
             </div>
-
-            {/* Apply Recommendation Button */}
-            <button
-              onClick={() => toast.success("Budget recommendation applied!")}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl transition-all shadow-md"
-            >
-              Apply Recommendation
-            </button>
-
-            {/* Potential Impact Bar */}
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500">Potential Impact</span>
-                <span className="font-bold text-emerald-600">+$1,250</span>
-              </div>
-              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className="bg-blue-600 h-full w-3/4 rounded-full"></div>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
