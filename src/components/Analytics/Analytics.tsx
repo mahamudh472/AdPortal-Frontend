@@ -30,6 +30,25 @@ import api from "../../lib/axios";
 interface MetricValue {
   value: number;
   change_percent: number;
+  /** Last 6 calendar months, oldest first. */
+  sparkline?: number[];
+}
+
+interface InsightHighlight {
+  platform: string;
+  label: string;
+  value: string;
+}
+
+interface InsightsSummary {
+  top_performing_platform: InsightHighlight | null;
+  most_conversions_platform: InsightHighlight | null;
+  best_click_rate_platform: InsightHighlight | null;
+  lowest_cost_per_conversion: InsightHighlight | null;
+}
+
+interface DevicePerformanceMap {
+  [device: string]: { clicks: number; impressions: number };
 }
 
 interface TopMetrics {
@@ -59,7 +78,8 @@ interface AnalyticsData {
   top_metrics: TopMetrics;
   monthly_performance: MonthlyPerformance;
   spend_by_platform: SpendByPlatform;
-  device_performance?: any;
+  device_performance?: DevicePerformanceMap;
+  insights_summary?: InsightsSummary;
 }
 
 export interface StatCard {
@@ -70,6 +90,7 @@ export interface StatCard {
   icon: React.ReactNode;
   iconBg: string;
   sparklineColor: string;
+  sparkline: number[];
 }
 
 export interface PlatformSpend {
@@ -92,17 +113,26 @@ export interface DeviceData {
   clicks: number;
 }
 
-// Sparkline SVG component for Stat Cards
-const CardSparklineWave = ({ color = "#2563eb" }: { color?: string }) => {
+// Sparkline for the stat cards, drawn from the real monthly series (viewBox 60 x 20).
+const CardSparklineWave = ({ color = "#2563eb", data }: { color?: string; data: number[] }) => {
+  const hasData = data.length > 1 && data.some((v) => v > 0);
+  const max = Math.max(...data, 0);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const points = hasData
+    ? data.map((v, i) => `${(i / (data.length - 1)) * 60},${17 - ((v - min) / range) * 14}`).join(" ")
+    : "0,17 60,17";
+
   return (
-    <div className="w-16 h-6 overflow-hidden relative">
+    <div className="w-16 h-6 overflow-hidden relative" title="Last 6 months">
       <svg className="w-full h-full" viewBox="0 0 60 20" preserveAspectRatio="none">
-        <path
-          d="M 0 15 Q 12 18 24 12 T 48 8 T 60 10"
+        <polyline
+          points={points}
           fill="none"
-          stroke={color}
+          stroke={hasData ? color : "#cbd5e1"}
           strokeWidth="2"
           strokeLinecap="round"
+          strokeLinejoin="round"
         />
       </svg>
     </div>
@@ -115,20 +145,9 @@ const PLATFORM_COLORS = {
   TIKTOK: "#A855F7",
 };
 
-const DEFAULT_DEVICE_DATA: DeviceData[] = [
-  { device: "Mobile", impressions: 125000, clicks: 4300 },
-  { device: "Desktop", impressions: 92000, clicks: 3200 },
-  { device: "Tablet", impressions: 38000, clicks: 1500 },
-];
+const CHART_TIMEFRAMES = ["7D", "30D", "3M", "6M", "1Y"];
 
-const DEFAULT_MONTHLY_DATA: MonthlyPerformanceData[] = [
-  { date: "Nov", impressions: 0, clicks: 0, conversions: 0 },
-  { date: "Dec", impressions: 0, clicks: 0, conversions: 0 },
-  { date: "Jan", impressions: 0, clicks: 0, conversions: 0 },
-  { date: "Feb", impressions: 0, clicks: 0, conversions: 0 },
-  { date: "Mar", impressions: 0, clicks: 0, conversions: 0 },
-  { date: "Apr", impressions: 0, clicks: 0, conversions: 0 },
-];
+const formatChange = (percent: number) => `${percent >= 0 ? "+" : ""}${percent}%`;
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -151,13 +170,13 @@ const Analytics: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [, setError] = useState<string | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
-  const [timeRange] = useState<string>("Last 6 Months");
   const [chartTimeframe, setChartTimeframe] = useState<string>("6M");
 
   const [stats, setStats] = useState<StatCard[]>([]);
-  const [monthlyData, setMonthlyData] = useState<MonthlyPerformanceData[]>(DEFAULT_MONTHLY_DATA);
+  const [monthlyData, setMonthlyData] = useState<MonthlyPerformanceData[]>([]);
   const [spendPlatform, setSpendPlatform] = useState<PlatformSpend[]>([]);
-  const [deviceData] = useState<DeviceData[]>(DEFAULT_DEVICE_DATA);
+  const [deviceData, setDeviceData] = useState<DeviceData[]>([]);
+  const [insights, setInsights] = useState<InsightsSummary | null>(null);
 
   const getOrgIdFromStorage = (): string => {
     try {
@@ -169,7 +188,7 @@ const Analytics: React.FC = () => {
     } catch (error) {
       console.error("Error parsing selectedOrganization:", error);
     }
-    return "7445262637849382912";
+    return "";
   };
 
   useEffect(() => {
@@ -192,71 +211,69 @@ const Analytics: React.FC = () => {
     };
   }, [selectedOrgId]);
 
+  // Refetch whenever the organization or the chart timeframe changes.
   useEffect(() => {
     if (selectedOrgId) {
       fetchAnalyticsData();
     } else {
       setLoading(false);
     }
-  }, [selectedOrgId]);
+  }, [selectedOrgId, chartTimeframe]);
 
   const fetchAnalyticsData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.get(`/main/analytics/?org_id=${selectedOrgId}`);
+      const response = await api.get(
+        `/main/analytics/?org_id=${selectedOrgId}&range=${chartTimeframe}`
+      );
       if (response.data) {
         transformData(response.data);
       }
     } catch (err: any) {
       console.error("Error fetching analytics data:", err);
-      // Populate clean default empty state format
-      populateDefaults();
-    } fontally: {
+      setError("Failed to load analytics data");
+      resetData();
+    } finally {
       setLoading(false);
     }
   };
 
-  const populateDefaults = () => {
-    setStats([
-      {
-        label: "Total Spend",
-        value: "$0",
-        change: "~ 0%",
-        positive: true,
-        icon: <DollarSign className="w-4 h-4 text-blue-600" />,
-        iconBg: "bg-blue-50",
-        sparklineColor: "#2563eb",
-      },
-      {
-        label: "Impressions",
-        value: "0",
-        change: "~ 0%",
-        positive: true,
-        icon: <Eye className="w-4 h-4 text-emerald-600" />,
-        iconBg: "bg-emerald-50",
-        sparklineColor: "#10b981",
-      },
-      {
-        label: "Click Rate",
-        value: "0%",
-        change: "~ 0%",
-        positive: true,
-        icon: <MousePointer className="w-4 h-4 text-blue-500" />,
-        iconBg: "bg-blue-50",
-        sparklineColor: "#2563eb",
-      },
-      {
-        label: "Conversions",
-        value: "0",
-        change: "~ 0%",
-        positive: true,
-        icon: <Target className="w-4 h-4 text-purple-600" />,
-        iconBg: "bg-purple-50",
-        sparklineColor: "#a855f7",
-      },
-    ]);
-    setMonthlyData(DEFAULT_MONTHLY_DATA);
+  const buildStatCards = (top?: TopMetrics): StatCard[] => {
+    const card = (
+      label: string,
+      metric: MetricValue | undefined,
+      format: (v: number) => string,
+      icon: React.ReactNode,
+      iconBg: string,
+      sparklineColor: string
+    ): StatCard => {
+      const change = metric?.change_percent ?? 0;
+      return {
+        label,
+        value: format(metric?.value ?? 0),
+        change: formatChange(change),
+        positive: change >= 0,
+        icon,
+        iconBg,
+        sparklineColor,
+        sparkline: metric?.sparkline ?? [],
+      };
+    };
+
+    return [
+      card("Total Spend", top?.total_spend, (v) => `$${v.toLocaleString()}`, <DollarSign className="w-4 h-4 text-blue-600" />, "bg-blue-50", "#2563eb"),
+      card("Impressions", top?.impressions, (v) => v.toLocaleString(), <Eye className="w-4 h-4 text-emerald-600" />, "bg-emerald-50", "#10b981"),
+      card("Click Rate", top?.click_rate, (v) => `${v}%`, <MousePointer className="w-4 h-4 text-blue-500" />, "bg-blue-50", "#2563eb"),
+      card("Conversions", top?.conversions, (v) => v.toLocaleString(), <Target className="w-4 h-4 text-purple-600" />, "bg-purple-50", "#a855f7"),
+    ];
+  };
+
+  const resetData = () => {
+    setStats(buildStatCards());
+    setMonthlyData([]);
+    setDeviceData([]);
+    setInsights(null);
     setSpendPlatform([
       { name: "Meta", value: 0, color: PLATFORM_COLORS.META },
       { name: "Google", value: 0, color: PLATFORM_COLORS.GOOGLE },
@@ -266,71 +283,37 @@ const Analytics: React.FC = () => {
 
   const transformData = (data: AnalyticsData) => {
     if (!data.top_metrics) {
-      populateDefaults();
+      resetData();
       return;
     }
 
-    const transformedStats: StatCard[] = [
-      {
-        label: "Total Spend",
-        value: `$${(data.top_metrics.total_spend?.value || 0).toLocaleString()}`,
-        change: `~ ${data.top_metrics.total_spend?.change_percent || 0}%`,
-        positive: (data.top_metrics.total_spend?.change_percent || 0) >= 0,
-        icon: <DollarSign className="w-4 h-4 text-blue-600" />,
-        iconBg: "bg-blue-50",
-        sparklineColor: "#2563eb",
-      },
-      {
-        label: "Impressions",
-        value: (data.top_metrics.impressions?.value || 0).toLocaleString(),
-        change: `~ ${data.top_metrics.impressions?.change_percent || 0}%`,
-        positive: (data.top_metrics.impressions?.change_percent || 0) >= 0,
-        icon: <Eye className="w-4 h-4 text-emerald-600" />,
-        iconBg: "bg-emerald-50",
-        sparklineColor: "#10b981",
-      },
-      {
-        label: "Click Rate",
-        value: `${data.top_metrics.click_rate?.value || 0}%`,
-        change: `~ ${data.top_metrics.click_rate?.change_percent || 0}%`,
-        positive: (data.top_metrics.click_rate?.change_percent || 0) >= 0,
-        icon: <MousePointer className="w-4 h-4 text-blue-500" />,
-        iconBg: "bg-blue-50",
-        sparklineColor: "#2563eb",
-      },
-      {
-        label: "Conversions",
-        value: (data.top_metrics.conversions?.value || 0).toLocaleString(),
-        change: `~ ${data.top_metrics.conversions?.change_percent || 0}%`,
-        positive: (data.top_metrics.conversions?.change_percent || 0) >= 0,
-        icon: <Target className="w-4 h-4 text-purple-600" />,
-        iconBg: "bg-purple-50",
-        sparklineColor: "#a855f7",
-      },
-    ];
-    setStats(transformedStats);
+    setStats(buildStatCards(data.top_metrics));
 
-    if (data.monthly_performance) {
-      const months = Object.keys(data.monthly_performance);
-      if (months.length > 0) {
-        setMonthlyData(
-          months.map((m) => ({
-            date: m,
-            impressions: data.monthly_performance[m].impressions || 0,
-            clicks: data.monthly_performance[m].clicks || 0,
-            conversions: data.monthly_performance[m].conversions || 0,
-          }))
-        );
-      }
-    }
+    setMonthlyData(
+      Object.entries(data.monthly_performance || {}).map(([label, m]) => ({
+        date: label,
+        impressions: m.impressions || 0,
+        clicks: m.clicks || 0,
+        conversions: m.conversions || 0,
+      }))
+    );
 
-    if (data.spend_by_platform) {
-      setSpendPlatform([
-        { name: "Meta", value: data.spend_by_platform.META || 0, color: PLATFORM_COLORS.META },
-        { name: "Google", value: data.spend_by_platform.GOOGLE || 0, color: PLATFORM_COLORS.GOOGLE },
-        { name: "TikTok", value: data.spend_by_platform.TIKTOK || 0, color: PLATFORM_COLORS.TIKTOK },
-      ]);
-    }
+    setSpendPlatform([
+      { name: "Meta", value: data.spend_by_platform?.META || 0, color: PLATFORM_COLORS.META },
+      { name: "Google", value: data.spend_by_platform?.GOOGLE || 0, color: PLATFORM_COLORS.GOOGLE },
+      { name: "TikTok", value: data.spend_by_platform?.TIKTOK || 0, color: PLATFORM_COLORS.TIKTOK },
+    ]);
+
+    // Backend returns { mobile: { clicks, impressions }, ... } — turn it into chart rows.
+    setDeviceData(
+      Object.entries(data.device_performance || {}).map(([device, m]) => ({
+        device: device.charAt(0).toUpperCase() + device.slice(1).toLowerCase(),
+        impressions: m.impressions || 0,
+        clicks: m.clicks || 0,
+      }))
+    );
+
+    setInsights(data.insights_summary ?? null);
   };
 
   const handleRefresh = () => {
@@ -346,18 +329,15 @@ const Analytics: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Analytics</h1>
           <p className="text-xs text-slate-400 font-medium mt-0.5">
-            Organization ID: {selectedOrgId || "7445262637849382912"}
+            {selectedOrgId ? `Organization ID: ${selectedOrgId}` : "No organization selected"}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Date Selector Dropdown */}
-          <div className="relative">
-            <button className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-sm cursor-pointer">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span>{timeRange}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1" />
-            </button>
+          {/* The stat cards always compare the current calendar month with the previous one */}
+          <div className="border border-slate-200 bg-white text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-sm">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span>This month vs last month</span>
           </div>
 
           {/* Refresh Button */}
@@ -374,7 +354,7 @@ const Analytics: React.FC = () => {
 
       {/* TOP STAT CARDS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {(stats.length > 0 ? stats : DEFAULT_STATS).map((stat) => (
+        {(stats.length > 0 ? stats : buildStatCards()).map((stat) => (
           <div
             key={stat.label}
             className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-3"
@@ -389,13 +369,17 @@ const Analytics: React.FC = () => {
             </div>
 
             <div className="flex items-center justify-between text-xs pt-1">
-              <div className="flex items-center gap-1 font-semibold text-emerald-600 text-[11px]">
-                <span>~</span>
+              <div
+                className={`flex items-center gap-1 font-semibold text-[11px] ${
+                  stat.positive ? "text-emerald-600" : "text-rose-500"
+                }`}
+              >
+                <span>{stat.positive ? "↑" : "↓"}</span>
                 <span>{stat.change}</span>
-                <span className="text-slate-400 font-normal ml-0.5">vs previous 6 months</span>
+                <span className="text-slate-400 font-normal ml-0.5">vs last month</span>
               </div>
 
-              <CardSparklineWave color={stat.sparklineColor} />
+              <CardSparklineWave color={stat.sparklineColor} data={stat.sparkline} />
             </div>
           </div>
         ))}
@@ -408,7 +392,7 @@ const Analytics: React.FC = () => {
 
           {/* Timeframe Filter Buttons */}
           <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl">
-            {["7D", "30D", "3M", "6M", "1Y"].map((tf) => (
+            {CHART_TIMEFRAMES.map((tf) => (
               <button
                 key={tf}
                 onClick={() => setChartTimeframe(tf)}
@@ -559,6 +543,17 @@ const Analytics: React.FC = () => {
             </div>
           </div>
 
+          {deviceData.length === 0 ? (
+            <div className="h-64 flex flex-col items-center justify-center text-center p-6 my-4">
+              <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+                <BarChart2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-xs font-bold text-blue-600">No device data available</h3>
+              <p className="text-[11px] text-slate-400 font-medium max-w-xs mt-1 leading-relaxed">
+                Device breakdown appears once your campaigns have delivered impressions.
+              </p>
+            </div>
+          ) : (
           <div className="h-64 w-full pt-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={deviceData}>
@@ -581,8 +576,9 @@ const Analytics: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          )}
 
-          {/* Legend & Note */}
+          {/* Legend */}
           <div>
             <div className="flex items-center justify-center gap-6 text-xs font-semibold text-slate-600 py-1">
               <div className="flex items-center gap-1.5">
@@ -594,104 +590,39 @@ const Analytics: React.FC = () => {
                 <span>Impressions</span>
               </div>
             </div>
-            <p className="text-[10px] text-slate-400 text-center font-medium mt-2">
-              * Sample data shown. Device performance tracking coming soon.
-            </p>
           </div>
         </div>
       </div>
 
-      {/* BOTTOM ROW: 4 METRIC INSIGHT CARDS */}
+      {/* BOTTOM ROW: 4 METRIC INSIGHT CARDS (last 6 months, best platform per metric) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Top Performing Platform */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex items-center gap-3.5">
-          <div className="p-2.5 rounded-full bg-blue-50 text-blue-600 shrink-0">
-            <TrendingUp className="w-4 h-4" />
+        {(
+          [
+            { title: "Top Performing Platform", item: insights?.top_performing_platform, icon: <TrendingUp className="w-4 h-4" />, tone: "bg-blue-50 text-blue-600" },
+            { title: "Most Conversions", item: insights?.most_conversions_platform, icon: <TrendingUp className="w-4 h-4" />, tone: "bg-emerald-50 text-emerald-600" },
+            { title: "Best Click Rate", item: insights?.best_click_rate_platform, icon: <Target className="w-4 h-4" />, tone: "bg-purple-50 text-purple-600" },
+            { title: "Lowest Cost / Conversion", item: insights?.lowest_cost_per_conversion, icon: <DollarSign className="w-4 h-4" />, tone: "bg-amber-50 text-amber-600" },
+          ] as const
+        ).map(({ title, item, icon, tone }) => (
+          <div
+            key={title}
+            className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex items-center gap-3.5"
+          >
+            <div className={`p-2.5 rounded-full shrink-0 ${tone}`}>{icon}</div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500">{title}</div>
+              <div className="text-xs font-bold text-slate-900 mt-0.5">
+                {item ? item.label : "No data available"}
+              </div>
+              <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                {item ? item.value : "Run campaigns to see insights"}
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500">Top Performing Platform</div>
-            <div className="text-xs font-bold text-slate-900 mt-0.5">No data available</div>
-            <div className="text-[10px] text-slate-400 font-medium mt-0.5">Run campaigns to see insights</div>
-          </div>
-        </div>
-
-        {/* Card 2: Most Conversions */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex items-center gap-3.5">
-          <div className="p-2.5 rounded-full bg-emerald-50 text-emerald-600 shrink-0">
-            <TrendingUp className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500">Most Conversions</div>
-            <div className="text-xs font-bold text-slate-900 mt-0.5">No data available</div>
-            <div className="text-[10px] text-slate-400 font-medium mt-0.5">Run campaigns to see insights</div>
-          </div>
-        </div>
-
-        {/* Card 3: Best Click Rate */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex items-center gap-3.5">
-          <div className="p-2.5 rounded-full bg-purple-50 text-purple-600 shrink-0">
-            <Target className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500">Best Click Rate</div>
-            <div className="text-xs font-bold text-slate-900 mt-0.5">No data available</div>
-            <div className="text-[10px] text-slate-400 font-medium mt-0.5">Run campaigns to see insights</div>
-          </div>
-        </div>
-
-        {/* Card 4: Lowest Cost / Conversion */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm flex items-center gap-3.5">
-          <div className="p-2.5 rounded-full bg-amber-50 text-amber-600 shrink-0">
-            <DollarSign className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-xs font-semibold text-slate-500">Lowest Cost / Conversion</div>
-            <div className="text-xs font-bold text-slate-900 mt-0.5">No data available</div>
-            <div className="text-[10px] text-slate-400 font-medium mt-0.5">Run campaigns to see insights</div>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 };
-
-const DEFAULT_STATS: StatCard[] = [
-  {
-    label: "Total Spend",
-    value: "$0",
-    change: "~ 0%",
-    positive: true,
-    icon: <DollarSign className="w-4 h-4 text-blue-600" />,
-    iconBg: "bg-blue-50",
-    sparklineColor: "#2563eb",
-  },
-  {
-    label: "Impressions",
-    value: "0",
-    change: "~ 0%",
-    positive: true,
-    icon: <Eye className="w-4 h-4 text-emerald-600" />,
-    iconBg: "bg-emerald-50",
-    sparklineColor: "#10b981",
-  },
-  {
-    label: "Click Rate",
-    value: "0%",
-    change: "~ 0%",
-    positive: true,
-    icon: <MousePointer className="w-4 h-4 text-blue-500" />,
-    iconBg: "bg-blue-50",
-    sparklineColor: "#2563eb",
-  },
-  {
-    label: "Conversions",
-    value: "0",
-    change: "~ 0%",
-    positive: true,
-    icon: <Target className="w-4 h-4 text-purple-600" />,
-    iconBg: "bg-purple-50",
-    sparklineColor: "#a855f7",
-  },
-];
 
 export default Analytics;

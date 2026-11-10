@@ -38,10 +38,12 @@ interface Campaign {
   updated_at: string;
   draft_data: any;
   organization: number;
-  // Dynamic or fallback fields for trends
-  ctr_trend?: string;
-  conversions_trend?: string;
-  roas_trend?: string;
+  // Period-over-period trends (last 7 days vs the 7 before). null when there is no data yet.
+  ctr_trend?: string | null;
+  conversions_trend?: string | null;
+  roas_trend?: string | null;
+  // Daily clicks for the last 7 days
+  sparkline_data?: number[];
 }
 
 // Brand SVG Icons
@@ -66,26 +68,39 @@ const TikTokIcon = () => (
   </svg>
 );
 
-const CardSparkline = ({ status, id }: { status: string; id: number }) => {
+// Builds a smooth SVG path from the daily series (viewBox is 100 x 24).
+const buildSparklinePath = (data: number[]): string => {
+  const width = 100;
+  const top = 3;
+  const bottom = 21;
+  const max = Math.max(...data, 0);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  const points = data.map((value, i) => ({
+    x: data.length === 1 ? width / 2 : (i / (data.length - 1)) * width,
+    y: bottom - ((value - min) / range) * (bottom - top),
+  }));
+  return points
+    .map((p, i) => {
+      if (i === 0) return `M ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+      const prev = points[i - 1];
+      const midX = ((prev.x + p.x) / 2).toFixed(1);
+      return `C ${midX} ${prev.y.toFixed(1)} ${midX} ${p.y.toFixed(1)} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`;
+    })
+    .join(" ");
+};
+
+const CardSparkline = ({ status, id, data }: { status: string; id: number; data?: number[] }) => {
   const isDraft = status?.toUpperCase() === "DRAFT";
   const isPaused = status?.toUpperCase() === "PAUSED";
-  const isGreen = id % 2 === 0 && !isDraft && !isPaused;
+  const series = data && data.length > 1 ? data : [];
+  const hasActivity = series.some((v) => v > 0);
 
-  const strokeColor = isDraft ? "#cbd5e1" : isPaused ? "#f59e0b" : isGreen ? "#10b981" : "#2563eb";
-  const strokeWidth = 2;
-
-  // Curved sparkline paths
-  const paths = [
-    "M 0 18 Q 15 22 25 15 T 50 18 T 75 10 T 100 12",
-    "M 0 20 Q 20 25 35 18 T 65 14 T 85 10 T 100 12",
-    "M 0 22 Q 15 15 30 18 T 60 12 T 80 16 T 100 8",
-    "M 0 20 Q 25 22 50 20 T 75 21 T 100 20",
-  ];
-
-  const pathD = isDraft ? paths[3] : paths[id % 3];
+  const strokeColor = isDraft || !hasActivity ? "#cbd5e1" : isPaused ? "#f59e0b" : "#10b981";
+  const pathD = buildSparklinePath(hasActivity ? series : [0, 0]);
 
   return (
-    <div className="w-full h-7 overflow-hidden relative my-1.5">
+    <div className="w-full h-7 overflow-hidden relative my-1.5" title="Clicks, last 7 days">
       <svg className="w-full h-full" viewBox="0 0 100 24" preserveAspectRatio="none">
         <defs>
           <linearGradient id={`spark-grad-${id}`} x1="0" y1="0" x2="0" y2="1">
@@ -94,7 +109,7 @@ const CardSparkline = ({ status, id }: { status: string; id: number }) => {
           </linearGradient>
         </defs>
         <path d={`${pathD} L 100 24 L 0 24 Z`} fill={`url(#spark-grad-${id})`} />
-        <path d={pathD} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
+        <path d={pathD} fill="none" stroke={strokeColor} strokeWidth={2} strokeLinecap="round" />
       </svg>
     </div>
   );
@@ -539,14 +554,15 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
   const isPaused = status === "PAUSED";
   const isActive = status === "ACTIVE";
 
-  // Fallback/dummy trend values for display consistency
-  const ctrTrend = campaign.ctr_trend ?? (isDraft ? "0.00%" : isPaused ? "↓ 2.1%" : "↑ 12.5%");
-  const convTrend = campaign.conversions_trend ?? (isDraft ? "0" : isPaused ? "↓ 33.3%" : "↑ 9.2%");
-  const roasTrend = campaign.roas_trend ?? (isDraft ? "0.0x" : isPaused ? "↓ 8.2%" : "↑ 15.3%");
+  // Trends come from the backend; "—" when there is no data to compare yet.
+  const ctrTrend = campaign.ctr_trend ?? "—";
+  const convTrend = campaign.conversions_trend ?? "—";
+  const roasTrend = campaign.roas_trend ?? "—";
 
-  const isCtrPositive = !ctrTrend.includes("↓") && !isDraft;
-  const isConvPositive = !convTrend.includes("↓") && !isDraft;
-  const isRoasPositive = !roasTrend.includes("↓") && !isDraft;
+  const isCtrPositive = !ctrTrend.includes("↓");
+  const isConvPositive = !convTrend.includes("↓");
+  const isRoasPositive = !roasTrend.includes("↓");
+  const noTrendData = (trend: string) => isDraft || trend === "—";
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 hover:shadow-md transition-all flex flex-col justify-between relative group">
@@ -690,7 +706,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             </div>
             <div
               className={`text-[9px] font-semibold mt-0.5 ${
-                isDraft ? "text-slate-400" : isCtrPositive ? "text-emerald-600" : "text-rose-500"
+                noTrendData(ctrTrend) ? "text-slate-400" : isCtrPositive ? "text-emerald-600" : "text-rose-500"
               }`}
             >
               {ctrTrend}
@@ -705,7 +721,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             </div>
             <div
               className={`text-[9px] font-semibold mt-0.5 ${
-                isDraft ? "text-slate-400" : isConvPositive ? "text-emerald-600" : "text-rose-500"
+                noTrendData(convTrend) ? "text-slate-400" : isConvPositive ? "text-emerald-600" : "text-rose-500"
               }`}
             >
               {convTrend}
@@ -720,7 +736,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
             </div>
             <div
               className={`text-[9px] font-semibold mt-0.5 ${
-                isDraft ? "text-slate-400" : isRoasPositive ? "text-emerald-600" : "text-rose-500"
+                noTrendData(roasTrend) ? "text-slate-400" : isRoasPositive ? "text-emerald-600" : "text-rose-500"
               }`}
             >
               {roasTrend}
@@ -729,7 +745,7 @@ const CampaignCard: React.FC<CampaignCardProps> = ({
         </div>
 
         {/* BOTTOM SPARKLINE CURVE WAVE */}
-        <CardSparkline status={status} id={campaign.id} />
+        <CardSparkline status={status} id={campaign.id} data={campaign.sparkline_data} />
 
         {/* CARD FOOTER */}
         <div className="flex items-center justify-between text-xs text-slate-400 pt-1">

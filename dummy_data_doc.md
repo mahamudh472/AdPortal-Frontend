@@ -66,54 +66,23 @@ This document lists all properties and sections in the Admin Dashboard, User Man
 
 ---
 
-## 6. User Dashboard (`src/pages/Dashboard/UserDashboard/UserDashboard/`)
+## 6. User dashboard pages
 
-### Header Controls & Date Selector
-- **API Gap**: Date range comparison filter (`May 1 – May 31, 2024`) and notification count badge (`3`) are client-side static indicators.
+Every user-dashboard page now loads its data from the backend. Where the backend cannot compute something yet it returns placeholder values marked `# TODO` in the code, so the frontend never hard-codes sample data.
 
-### Platform Spend Cards & Mini Sparklines
-- **API Gap**:
-  - The endpoint `GET /api/v1/main/dashboard/` returns `total_spend` but lacks platform-specific spend totals (Facebook `$4,230.55`, Google Ads `$3,215.45`, TikTok `$2,815.20`, Instagram `$1,245.30`), trend percentage comparisons (`+12.5%`, `+8.3%`, `+15.7%`, `+5.3%`, `+11.2%`), or historical sparkline arrays.
-- **Front-end Workaround**:
-  - Platform spend cards and SVG mini sparkline trend curves are rendered with static/fallback data.
+| Page | Data | Backend status |
+|---|---|---|
+| Dashboard | platform cards, chart, top campaigns, AI insights, budget recommendation | Real data from `AnalysisDaily`. Demo campaigns / insights / recommendation are returned (TODO in `apps/main/utils/helper.py`) when the organization has none yet. |
+| Campaigns | `ctr_trend`, `conversions_trend`, `roas_trend`, `sparkline_data` | Real (last 7 days vs previous 7). `null` trend shows "—". |
+| Campaign details | Placements | Real spend share per platform (`placements`). |
+| Analytics | stat cards + sparklines, performance chart (`range`), spend by platform, device chart, insight cards | Real. Device chart is empty until `device_breakdown` is populated by the sync tasks. |
+| Reports | list, date range, status, search/type filter, insights sidebar | Real. |
+| Reports | **Scheduled reports** | Stored and toggleable, but **no task generates them yet** (TODO on `ScheduledReport`). |
+| AI Tools → Optimization | insights, settings (auto / mode / frequency), last optimization | Real (settings persisted per organization). |
+| AI Tools → Optimization | `summary.applied_today`, `summary.est_savings`, `potential_impact`, `action_*`, **history list** | **Placeholder** — TODO in `apps/main/services/ai.py` / `AIInsightDetailSerializer`. "Optimize Now" only records the timestamp. |
+| Subscriptions | plans, current plan, billing history, invoice download / ZIP | Real (Stripe invoice PDFs resolved on demand). |
+| Team | members, joined / last active, stats | Real (`last_active_at` = last login). |
+| Campaign wizard → Audience | Estimated reach | **Heuristic** from `POST /main/audience-reach-estimate/` — TODO: use platform reach-estimate APIs. |
+| Campaign wizard → Review | Pre-launch checks, Publish | Real: checks are computed from the saved campaign + connected accounts; Publish calls `create-ad` with `draft: false`. |
 
-### Performance Overview (Metrics & Multi-Line Chart)
-- **API Gap**:
-  - The backend does not return individual platform daily time-series data for chart rendering across Facebook, Google Ads, TikTok, and Instagram, nor does it return metric trends (`▲ 18.6%`, `▲ 16.3%`, etc.) or specific conversion/cost-per-conversion values.
-- **Front-end Workaround**:
-  - Rendered with Recharts using time-series points (`May 1` – `May 31`) and 5 metric summary chips (Impressions, Clicks, Conversions, Cost / Conv., ROAS).
-
-### Top Campaigns Table
-- **API Gap**:
-  - `recent_campaigns` in backend payload does not include CTR, conversions count per campaign, or per-platform breakdown icons for top campaign listings.
-- **Front-end Workaround**:
-  - Renders top campaign rows formatted with spend, conversions, ROAS, CTR, and platform badges.
-
-### AI Insights & Budget Recommendation
-- **API Gap**:
-  - AI insights from backend do not include confidence score percentages (`92%`, `78%`, `85%`), ROI impact projections (`+18% ROI`), or budget recommendation campaign models (`Summer Sale 2024`, `32% Better`, `+$1,250` impact).
-- **Front-end Workaround**:
-  - Visualized with custom AI Insight cards and Budget Recommendation donut gauge card.
-
----
-
----
-
-## 12. Team Collaboration (`src/components/Team/`)
-
-### Team Member Activity & Role Filter
-- **API Gap**:
-  - The endpoint `GET /api/v1/team/members/` returns basic member profile info, but lacks timestamps for `joined_date`, `last_active_at`, and stat aggregates for `inactive_members`.
-- **Front-end Workaround**:
-  - Displays formatted timestamps for member activity, search & role filter controls, and top stats summary metrics (`Total Members`, `Active Users`, `Pending Invites`, `Inactive Members`).
-
-
-
-
-
-
-
-
-
-
-
+Unused components `UserDashboard/SpendOverview` and `UserDashboard/RecentCampaigns` still contain sample deltas but are not rendered anywhere.

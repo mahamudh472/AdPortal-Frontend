@@ -9,8 +9,8 @@ export interface TeamMember {
   };
   role: 'OWNER' | 'ADMIN' | 'MEMBER';
   status: 'ACTIVE' | 'PENDING' | 'INACTIVE';
-  joined?: string;
-  created_at?: string;
+  joined_at?: string | null;
+  last_active_at?: string | null;
 }
 
 export interface Team {

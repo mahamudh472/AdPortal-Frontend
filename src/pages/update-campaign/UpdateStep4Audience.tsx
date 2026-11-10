@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Icon from "../../assets/Icon.svg";
 import { Link, useNavigate, useParams } from "react-router";
 import api from "@/lib/axios";
 import { toast } from "sonner";
+import { useAudienceReach } from "@/lib/useAudienceReach";
 
 type GenderType = "all" | "male" | "female";
 
@@ -106,27 +107,8 @@ const Step4Audience: React.FC = () => {
     fetchCampaignData();
   }, [campaignId]);
 
-  // Estimated reach
-  const estimatedReach = useMemo(() => {
-    let baseMin = 630;
-    let baseMax = 960;
-
-    if (gender !== "all") {
-      baseMin -= 50;
-      baseMax -= 80;
-    }
-
-    if (interests.length > 10) {
-      baseMin += 150;
-      baseMax += 290;
-    }
-
-    return {
-      min: `${baseMin}K`,
-      max: `${baseMax}K`,
-      progress: Math.min(90, Math.max(40, baseMin / 10)),
-    };
-  }, [gender, interests]);
+  // Estimated reach comes from the backend (debounced on every targeting change)
+  const estimatedReach = useAudienceReach({ minAge, maxAge, gender, location, interests });
 
   // Submit to API
   const handleSubmit = async () => {
@@ -361,7 +343,7 @@ const Step4Audience: React.FC = () => {
         </div>
 
         <p className="text-xs text-gray-500">
-          ✓ Your audience size is optimal for this campaign
+          {estimatedReach.loading ? "Updating estimate…" : "Estimate based on your targeting. Actual reach may vary."}
         </p>
       </div>
 

@@ -145,6 +145,16 @@ type Campaign = {
   total_budget: number;
   total_spent: number;
   remaining_budget: number;
+  placements?: Placement[];
+};
+
+type Placement = {
+  platform: string;
+  label: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  percent: number;
 };
 
 type AudienceAndPlacementsProps = {
@@ -153,6 +163,20 @@ type AudienceAndPlacementsProps = {
 
 const AudienceAndPlacements: React.FC<AudienceAndPlacementsProps> = ({ campaign }) => {
   const { audience_targeting, platforms } = campaign;
+  // Spend share per platform from the backend. Before any data has synced, list the
+  // connected platforms without a share so the card is still informative.
+  const placements: Placement[] =
+    campaign.placements && campaign.placements.length > 0
+      ? campaign.placements
+      : (platforms || []).map((platform) => ({
+          platform,
+          label: platform,
+          spend: 0,
+          impressions: 0,
+          clicks: 0,
+          percent: 0,
+        }));
+  const hasPlacementData = placements.some((p) => p.percent > 0);
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* ================= Audience Targeting ================= */}
@@ -212,23 +236,22 @@ const AudienceAndPlacements: React.FC<AudienceAndPlacementsProps> = ({ campaign 
         </h2>
 
         <div className="space-y-5">
-          {platforms && platforms.length > 0 ? (
-            platforms.map((platform) => (
-              <div key={platform}>
+          {placements.length > 0 ? (
+            placements.map((item) => (
+              <div key={item.platform}>
                 <div className="mb-1 flex items-center justify-between text-sm">
-                  <span className="text-slate-700">
-                    {platform}
-                  </span>
+                  <span className="text-slate-700">{item.label}</span>
                   <span className="text-slate-500">
-                    {/* No value available, so show N/A or 0 */}
-                    N/A
+                    {hasPlacementData
+                      ? `${item.percent}% · $${item.spend.toLocaleString()}`
+                      : "No data yet"}
                   </span>
                 </div>
 
                 <div className="h-2 w-full rounded-full bg-slate-100">
                   <div
                     className="h-2 rounded-full bg-blue-600"
-                    style={{ width: `100%` }}
+                    style={{ width: `${item.percent}%` }}
                   />
                 </div>
               </div>

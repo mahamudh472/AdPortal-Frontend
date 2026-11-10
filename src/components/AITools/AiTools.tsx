@@ -19,12 +19,13 @@ import {
   Leaf,
   Scale,
   Rocket,
-  MoreVertical,
   Sliders,
   CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import api from "../../lib/axios";
+import { formatToLocalDateTime, parseUTCDate } from "@/lib/dateUtils";
 
 type CopyType = "headlines" | "primary" | "descriptions" | "ctas";
 
@@ -32,12 +33,12 @@ interface GeneratedResultItem {
   id: string;
   text: string;
   type: CopyType;
-  score?: "High Score" | "Good Score";
   selected?: boolean;
 }
 
 interface OptimizationInsight {
   id: string;
+  campaignId: number | null;
   impact: "HIGH" | "MEDIUM" | "LOW" | "INFO";
   title: string;
   description: string;
@@ -46,6 +47,68 @@ interface OptimizationInsight {
   actionText: string;
   actionType: "apply" | "fix" | "generate" | "none" | "create";
 }
+
+type OptimizationMode = "conservative" | "balanced" | "aggressive";
+
+interface OptimizationSummary {
+  active_insights: number;
+  high_priority: number;
+  applied_today: number;
+  est_savings: number;
+}
+
+interface PotentialImpact {
+  conversions: string;
+  cost_per_result: string;
+  roas: string;
+}
+
+interface HistoryItem {
+  id: string;
+  title: string;
+  time: string;
+  impact: string;
+  status: string;
+}
+
+interface ApiInsight {
+  id: number;
+  campaign: number | null;
+  impact: "HIGH" | "MEDIUM" | "LOW" | "INFO";
+  title: string;
+  description: string;
+  metrics?: { label: string; value: string; is_positive?: boolean }[];
+  campaigns_count?: number;
+  action_text?: string;
+  action_type?: OptimizationInsight["actionType"];
+}
+
+const INSIGHTS_PAGE_SIZE = 20;
+
+const mapInsight = (item: ApiInsight): OptimizationInsight => ({
+  id: String(item.id),
+  campaignId: item.campaign ?? null,
+  impact: item.impact,
+  title: item.title,
+  description: item.description,
+  metrics: (item.metrics ?? []).map((m) => ({ label: m.label, value: m.value, isPositive: m.is_positive })),
+  campaignsCount: item.campaigns_count ?? 1,
+  actionText: item.action_text ?? "No Action Needed",
+  actionType: item.action_type ?? "none",
+});
+
+const timeAgo = (iso?: string | null): string => {
+  if (!iso) return "Never";
+  const date = parseUTCDate(iso);
+  if (!date) return "Never";
+  const minutes = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+};
 
 const getOrgId = (): string | null => {
   const selectedOrg = localStorage.getItem("selectedOrganization");
@@ -60,102 +123,17 @@ const getOrgId = (): string | null => {
   return null;
 };
 
-const DEFAULT_RESULTS: GeneratedResultItem[] = [
-  { id: "h1", text: "Run Smarter Ads with AI", type: "headlines", score: "High Score", selected: false },
-  { id: "h2", text: "AI-Powered Ads. Better Results.", type: "headlines", score: "High Score", selected: false },
-  { id: "h3", text: "Advertise Smarter. Not Harder.", type: "headlines", score: "Good Score", selected: false },
-  { id: "h4", text: "Maximize ROAS with AI", type: "headlines", score: "High Score", selected: false },
-  { id: "h5", text: "AI That Turns Clicks into Customers", type: "headlines", score: "Good Score", selected: false },
-  { id: "h6", text: "Better Ads in Half the Time", type: "headlines", score: "Good Score", selected: false },
-  {
-    id: "p1",
-    text: "AdPortal uses the power of AI to help you create, optimize, and scale ads across Google, Meta, and TikTok — all in one place. Get more clicks, lower costs, and better results.",
-    type: "primary",
-    selected: false,
-  },
-  {
-    id: "p2",
-    text: "Stop guessing. Start scaling. AdPortal's AI analyzes performance and creates high-converting ads that drive real results across every platform.",
-    type: "primary",
-    selected: false,
-  },
-  {
-    id: "p3",
-    text: "Create stunning ads, reach the right audience, and grow your business with AI-powered insights and automation.",
-    type: "primary",
-    selected: false,
-  },
-];
-
-const DEFAULT_INSIGHTS: OptimizationInsight[] = [
-  {
-    id: "opt-1",
-    impact: "HIGH",
-    title: "Increase TikTok budget by +20%",
-    description: "TikTok is delivering the highest ROAS. Increasing budget can drive more conversions.",
-    metrics: [
-      { label: "Conversions", value: "+18%", isPositive: true },
-      { label: "CPA", value: "-10%", isPositive: true },
-    ],
-    campaignsCount: 2,
-    actionText: "Apply Suggestion",
-    actionType: "apply",
-  },
-  {
-    id: "opt-2",
-    impact: "MEDIUM",
-    title: "Improve Google Ads CTR",
-    description: "Your CTR is 23% below average. Improving ad copy can significantly boost results.",
-    metrics: [
-      { label: "CTR", value: "+12%", isPositive: true },
-      { label: "CPC", value: "-8%", isPositive: true },
-    ],
-    campaignsCount: 1,
-    actionText: "Fix with AI",
-    actionType: "fix",
-  },
-  {
-    id: "opt-3",
-    impact: "LOW",
-    title: "Expand audience interests",
-    description: "Add related interests to reach a wider audience and increase potential conversions.",
-    metrics: [
-      { label: "Reach", value: "+8%", isPositive: true },
-      { label: "Conversions", value: "+5%", isPositive: true },
-    ],
-    campaignsCount: 3,
-    actionText: "Generate Suggestions",
-    actionType: "generate",
-  },
-  {
-    id: "opt-4",
-    impact: "INFO",
-    title: "Ad creative is performing well",
-    description: "Your ad creative is outperforming 78% of similar campaigns.",
-    metrics: [
-      { label: "CTR", value: "3.4%", isPositive: true },
-      { label: "CPC", value: "$0.45", isPositive: true },
-    ],
-    campaignsCount: 2,
-    actionText: "No Action Needed",
-    actionType: "none",
-  },
-  {
-    id: "opt-5",
-    impact: "LOW",
-    title: "Test additional ad variations",
-    description: "A/B testing more variations could improve conversion rate.",
-    metrics: [
-      { label: "Conversions", value: "+6%", isPositive: true },
-      { label: "CPA", value: "-7%", isPositive: true },
-    ],
-    campaignsCount: 2,
-    actionText: "Create Variations",
-    actionType: "create",
-  },
-];
+const getOrgName = (): string => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem("selectedOrganization") || "null");
+    return parsed?.name || "";
+  } catch {
+    return "";
+  }
+};
 
 const AiTools: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"copy" | "optimization">(() => {
     if (window.location.hash === "#optimization") return "optimization";
     return "copy";
@@ -164,26 +142,131 @@ const AiTools: React.FC = () => {
   const [optSubTab, setOptSubTab] = useState<"insights" | "history">("insights");
 
   // Controlled Form State for AI Copy
-  const [product, setProduct] = useState("AdPortal");
-  const [niche, setNiche] = useState("Ecommerce Business");
-  const [description, setDescription] = useState("Ad run with AI for Google, Meta and Tiktok");
+  const [product, setProduct] = useState(getOrgName);
+  const [niche, setNiche] = useState("");
+  const [description, setDescription] = useState("");
   const [tone, setTone] = useState("Professional");
   const [platform, setPlatform] = useState<"all" | "google" | "meta" | "tiktok">("all");
   const [copyType, setCopyType] = useState<CopyType>("headlines");
 
   // Results & Copy UI State
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<GeneratedResultItem[]>(DEFAULT_RESULTS);
+  const [results, setResults] = useState<GeneratedResultItem[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [showMoreResults, setShowMoreResults] = useState(false);
 
-  // AI Optimization Control Center States
+  // AI Optimization Control Center States (loaded from the API)
   const [autoOptimization, setAutoOptimization] = useState(true);
-  const [optimizationMode, setOptimizationMode] = useState<"conservative" | "balanced" | "aggressive">("balanced");
+  const [optimizationMode, setOptimizationMode] = useState<OptimizationMode>("balanced");
   const [optimizationFrequency, setOptimizationFrequency] = useState("Daily Optimization");
   const [optimizingNow, setOptimizingNow] = useState(false);
-  const [insightsList, setInsightsList] = useState<OptimizationInsight[]>(DEFAULT_INSIGHTS);
+  const [insightsList, setInsightsList] = useState<OptimizationInsight[]>([]);
+  const [insightsTotal, setInsightsTotal] = useState(0);
+  const [insightsPage, setInsightsPage] = useState(1);
+  const [insightsLoading, setInsightsLoading] = useState(false);
   const [insightsFilter, setInsightsFilter] = useState("all");
+  const [summary, setSummary] = useState<OptimizationSummary | null>(null);
+  const [potentialImpact, setPotentialImpact] = useState<PotentialImpact | null>(null);
+  const [lastOptimization, setLastOptimization] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
+
+  const fetchInsights = async (page = 1) => {
+    const org_id = getOrgId();
+    if (!org_id) return;
+    setInsightsLoading(true);
+    try {
+      const response = await api.get(
+        `/main/ai-insights/?org_id=${org_id}&page=${page}&page_size=${INSIGHTS_PAGE_SIZE}`
+      );
+      const mapped = (response.data.results ?? []).map(mapInsight);
+      setInsightsList((prev) => (page === 1 ? mapped : [...prev, ...mapped]));
+      setInsightsTotal(response.data.count ?? mapped.length);
+      setInsightsPage(page);
+      setSummary(response.data.summary ?? null);
+      setPotentialImpact(response.data.potential_impact ?? null);
+      setLastOptimization(response.data.last_optimization ?? null);
+    } catch (error) {
+      console.error("Error fetching AI insights:", error);
+      toast.error("Failed to load AI insights.");
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  const fetchOptimizationSettings = async () => {
+    const org_id = getOrgId();
+    if (!org_id) return;
+    try {
+      const response = await api.get(`/main/ai-optimization/settings/?org_id=${org_id}`);
+      setAutoOptimization(response.data.auto_optimization);
+      setOptimizationMode(response.data.optimization_mode);
+      setOptimizationFrequency(response.data.optimization_frequency);
+    } catch (error) {
+      console.error("Error fetching AI optimization settings:", error);
+    }
+  };
+
+  const fetchHistory = async () => {
+    const org_id = getOrgId();
+    if (!org_id) return;
+    try {
+      const response = await api.get(`/main/ai-optimization/history/?org_id=${org_id}`);
+      setHistory(response.data.results ?? []);
+    } catch (error) {
+      console.error("Error fetching optimization history:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchInsights(1);
+    fetchOptimizationSettings();
+    fetchHistory();
+  }, []);
+
+  /** Saves one control-center setting; rolls the UI back if the API rejects it. */
+  const saveSetting = async (
+    patch: Partial<{ auto_optimization: boolean; optimization_mode: OptimizationMode; optimization_frequency: string }>,
+    rollback: () => void,
+    successMessage?: string
+  ) => {
+    const org_id = getOrgId();
+    if (!org_id) return;
+    try {
+      await api.patch(`/main/ai-optimization/settings/?org_id=${org_id}`, patch);
+      if (successMessage) toast.success(successMessage);
+    } catch (error: any) {
+      rollback();
+      toast.error(
+        error.response?.status === 403
+          ? "Only owners and admins can change AI optimization settings."
+          : "Failed to save AI optimization settings."
+      );
+    }
+  };
+
+  const handleToggleAutoOptimization = () => {
+    const previous = autoOptimization;
+    const next = !previous;
+    setAutoOptimization(next);
+    saveSetting(
+      { auto_optimization: next },
+      () => setAutoOptimization(previous),
+      `Auto Optimization turned ${next ? "ON" : "OFF"}`
+    );
+  };
+
+  const handleModeChange = (mode: OptimizationMode) => {
+    const previous = optimizationMode;
+    if (mode === previous) return;
+    setOptimizationMode(mode);
+    saveSetting({ optimization_mode: mode }, () => setOptimizationMode(previous));
+  };
+
+  const handleFrequencyChange = (frequency: string) => {
+    const previous = optimizationFrequency;
+    setOptimizationFrequency(frequency);
+    saveSetting({ optimization_frequency: frequency }, () => setOptimizationFrequency(previous));
+  };
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -276,7 +359,6 @@ const AiTools: React.FC = () => {
           id: `gen-${Date.now()}-${index}`,
           text: text,
           type: copyType,
-          score: index % 2 === 0 ? "High Score" : "Good Score",
           selected: false,
         }));
         setResults((prev) => [...newItems, ...prev]);
@@ -284,27 +366,76 @@ const AiTools: React.FC = () => {
       }
     } catch (err: any) {
       console.error("Error generating copy:", err);
-      toast.error(err.response?.data?.message || "Failed to generate AI copy.");
+      toast.error(
+        err.response?.data?.message ||
+          err.response?.data?.error ||
+          err.response?.data?.detail ||
+          "Failed to generate AI copy."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOptimizeNow = () => {
+  const handleOptimizeNow = async () => {
+    const org_id = getOrgId();
+    if (!org_id) {
+      toast.error("Please select an organization first.");
+      return;
+    }
     setOptimizingNow(true);
-    setTimeout(() => {
+    try {
+      const response = await api.post(`/main/ai-optimization/run/?org_id=${org_id}`);
+      setLastOptimization(response.data.last_optimization ?? null);
+      await Promise.all([fetchInsights(1), fetchHistory()]);
+      toast.success(response.data.message || "AI Optimization check complete!");
+    } catch (error) {
+      console.error("Error running optimization:", error);
+      toast.error("Failed to run AI optimization.");
+    } finally {
       setOptimizingNow(false);
-      toast.success("AI Optimization check complete! Recommendations updated.");
-    }, 1500);
+    }
   };
 
-  const handleApplyInsight = (id: string, title: string) => {
-    toast.success(`Action applied for "${title}"!`);
-    setInsightsList((prev) => prev.filter((item) => item.id !== id));
+  const handleInsightAction = async (insight: OptimizationInsight) => {
+    if (insight.actionType === "none") return;
+
+    // Copy-related suggestions are handled in the AI Copy Generator tab.
+    if (insight.actionType !== "apply") {
+      handleTabChange("copy");
+      toast.info(`Use the copy generator to act on "${insight.title}".`);
+      return;
+    }
+
+    const org_id = getOrgId();
+    if (!org_id) return;
+    setApplyingId(insight.id);
+    try {
+      await api.post(`/main/apply-budget-recommendation/?org_id=${org_id}`, {
+        campaign_id: insight.campaignId,
+      });
+      toast.success(`Action applied for "${insight.title}"!`);
+      setInsightsList((prev) => prev.filter((item) => item.id !== insight.id));
+      setInsightsTotal((total) => Math.max(0, total - 1));
+      fetchHistory();
+    } catch (error: any) {
+      toast.error(
+        error.response?.status === 403
+          ? "Only owners and admins can apply budget changes."
+          : error.response?.data?.message || "Failed to apply suggestion."
+      );
+    } finally {
+      setApplyingId(null);
+    }
   };
 
-  const headlinesList = results.filter((item) => item.type === "headlines");
-  const primaryList = results.filter((item) => item.type === "primary");
+  const visibleInsights = insightsList.filter((item) =>
+    insightsFilter === "high"
+      ? item.impact === "HIGH"
+      : insightsFilter === "medium"
+      ? item.impact === "MEDIUM"
+      : true
+  );
 
   const isAllSelected = results.length > 0 && results.every((item) => item.selected);
 
@@ -559,47 +690,62 @@ const AiTools: React.FC = () => {
                   </label>
                 </div>
 
-                {/* Headlines Section */}
-                {headlinesList.length > 0 && (
-                  <div className="py-3 space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800 mb-2">
-                      <span>Headlines</span>
-                      <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                        {headlinesList.length}
-                      </span>
-                    </div>
+                {results.length === 0 && (
+                  <div className="py-12 text-center text-xs text-slate-400 font-medium">
+                    <Wand2 className="w-8 h-8 mx-auto mb-3 text-slate-300" />
+                    Fill in the form and click <span className="font-bold text-slate-500">Generate Copy</span> to
+                    see AI-written ad copy here.
+                  </div>
+                )}
 
-                    <div className="space-y-2">
-                      {headlinesList.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50/60 border border-slate-100 hover:bg-slate-50 transition-all text-xs"
-                        >
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <input
-                              type="checkbox"
-                              checked={!!item.selected}
-                              onChange={() => handleSelectItem(item.id)}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer shrink-0"
-                            />
-                            <span className="font-semibold text-slate-800 truncate">{item.text}</span>
-                          </div>
+                {/* One section per copy type that has results */}
+                {(
+                  [
+                    { type: "headlines", title: "Headlines", multiline: false },
+                    { type: "primary", title: "Primary Text", multiline: true },
+                    { type: "descriptions", title: "Descriptions", multiline: true },
+                    { type: "ctas", title: "CTAs", multiline: false },
+                  ] as const
+                ).map(({ type, title, multiline }, sectionIndex) => {
+                  const items = results.filter((item) => item.type === type);
+                  if (items.length === 0) return null;
+                  return (
+                    <div
+                      key={type}
+                      className={`py-3 space-y-2 ${sectionIndex > 0 ? "border-t border-slate-100" : ""}`}
+                    >
+                      <div className="flex items-center gap-2 text-xs font-bold text-slate-800 mb-2">
+                        <span>{title}</span>
+                        <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                          {items.length}
+                        </span>
+                      </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
-                            {item.score && (
-                              <span
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                                  item.score === "High Score"
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : "bg-blue-100 text-blue-700"
-                                }`}
-                              >
-                                {item.score}
-                              </span>
-                            )}
+                      <div className="space-y-2.5">
+                        {items.map((item) => (
+                          <div
+                            key={item.id}
+                            className={`flex justify-between gap-3 rounded-xl bg-slate-50/60 border border-slate-100 hover:bg-slate-50 transition-all text-xs ${
+                              multiline ? "items-start p-3" : "items-center p-2.5"
+                            }`}
+                          >
+                            <div className={`flex gap-3 flex-1 min-w-0 ${multiline ? "items-start" : "items-center"}`}>
+                              <input
+                                type="checkbox"
+                                checked={!!item.selected}
+                                onChange={() => handleSelectItem(item.id)}
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer shrink-0 mt-0.5"
+                              />
+                              {multiline ? (
+                                <p className="text-slate-700 leading-relaxed font-medium">{item.text}</p>
+                              ) : (
+                                <span className="font-semibold text-slate-800 truncate">{item.text}</span>
+                              )}
+                            </div>
+
                             <button
                               onClick={() => handleCopyText(item.id, item.text)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer shrink-0"
                               title="Copy"
                             >
                               {copiedId === item.id ? (
@@ -609,64 +755,11 @@ const AiTools: React.FC = () => {
                               )}
                             </button>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
-
-                {/* Primary Text Section */}
-                {primaryList.length > 0 && (
-                  <div className="py-3 border-t border-slate-100 space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-800 mb-2">
-                      <span>Primary Text</span>
-                      <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-md">
-                        {primaryList.length}
-                      </span>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {primaryList.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-start justify-between gap-3 p-3 rounded-xl bg-slate-50/60 border border-slate-100 hover:bg-slate-50 transition-all text-xs"
-                        >
-                          <div className="flex items-start gap-3 flex-1">
-                            <input
-                              type="checkbox"
-                              checked={!!item.selected}
-                              onChange={() => handleSelectItem(item.id)}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4 w-4 cursor-pointer mt-0.5 shrink-0"
-                            />
-                            <p className="text-slate-700 leading-relaxed font-medium">{item.text}</p>
-                          </div>
-
-                          <button
-                            onClick={() => handleCopyText(item.id, item.text)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer shrink-0 mt-0.5"
-                            title="Copy"
-                          >
-                            {copiedId === item.id ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-2 text-center border-t border-slate-100">
-                <button
-                  onClick={() => setShowMoreResults(!showMoreResults)}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center justify-center gap-1 mx-auto cursor-pointer"
-                >
-                  <span>{showMoreResults ? "Show Less Results" : "View More Results"}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMoreResults ? "rotate-180" : ""}`} />
-                </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -736,7 +829,7 @@ const AiTools: React.FC = () => {
             <div className="flex items-center gap-3">
               <div className="bg-white border border-slate-200 text-slate-600 rounded-xl px-3.5 py-2 text-xs flex items-center gap-2 shadow-sm">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <span>Last Optimization: <span className="font-bold text-slate-800">2 hours ago</span></span>
+                <span>Last Optimization: <span className="font-bold text-slate-800">{timeAgo(lastOptimization)}</span></span>
               </div>
 
               <button
@@ -784,7 +877,7 @@ const AiTools: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm font-bold text-slate-900">AI Insights</h2>
                     <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                      {insightsList.length}
+                      {insightsTotal}
                     </span>
                   </div>
 
@@ -796,7 +889,7 @@ const AiTools: React.FC = () => {
                         onChange={(e) => setInsightsFilter(e.target.value)}
                         className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 pr-7 appearance-none focus:outline-none focus:border-blue-500 cursor-pointer shadow-sm"
                       >
-                        <option value="all">All Campaigns</option>
+                        <option value="all">All Insights</option>
                         <option value="high">High Impact Only</option>
                         <option value="medium">Medium Impact</option>
                       </select>
@@ -807,7 +900,21 @@ const AiTools: React.FC = () => {
 
                 {/* INSIGHT CARDS */}
                 <div className="space-y-3.5">
-                  {insightsList.map((item) => {
+                  {insightsLoading && insightsList.length === 0 && (
+                    <div className="py-10 text-center text-xs text-slate-400 font-medium">Loading insights...</div>
+                  )}
+                  {!insightsLoading && visibleInsights.length === 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-8 text-center shadow-sm">
+                      <Sparkles className="w-8 h-8 mx-auto mb-3 text-slate-300" />
+                      <h3 className="text-sm font-bold text-slate-800">No insights yet</h3>
+                      <p className="text-xs text-slate-400 font-medium mt-1">
+                        {insightsList.length > 0
+                          ? "No insights match this filter."
+                          : "Run campaigns and click Optimize Now to get AI recommendations."}
+                      </p>
+                    </div>
+                  )}
+                  {visibleInsights.map((item) => {
                     const isHigh = item.impact === "HIGH";
                     const isMedium = item.impact === "MEDIUM";
                     const isLow = item.impact === "LOW";
@@ -866,8 +973,13 @@ const AiTools: React.FC = () => {
                             {/* METRICS PILLS */}
                             <div className="flex items-center gap-3 pt-1">
                               {item.metrics.map((m, idx) => (
-                                <span key={idx} className="text-[11px] font-bold text-emerald-600 flex items-center gap-0.5">
-                                  <span>▲</span>
+                                <span
+                                  key={idx}
+                                  className={`text-[11px] font-bold flex items-center gap-0.5 ${
+                                    m.isPositive === false ? "text-rose-500" : m.isPositive ? "text-emerald-600" : "text-slate-700"
+                                  }`}
+                                >
+                                  {m.isPositive !== undefined && m.isPositive !== null && <span>{m.isPositive ? "▲" : "▼"}</span>}
                                   <span>{m.value}</span>
                                   <span className="text-slate-400 font-medium ml-0.5">{m.label}</span>
                                 </span>
@@ -880,23 +992,21 @@ const AiTools: React.FC = () => {
                         <div className="flex flex-row sm:flex-col items-end justify-between sm:justify-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                           <div className="flex items-center gap-2 text-xs text-slate-400">
                             <span>Campaigns: {item.campaignsCount}</span>
-                            <button className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer">
-                              <MoreVertical className="w-3.5 h-3.5" />
-                            </button>
                           </div>
 
                           {/* ACTION BUTTON */}
                           {item.actionType === "apply" && (
                             <button
-                              onClick={() => handleApplyInsight(item.id, item.title)}
-                              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-sm transition-all cursor-pointer"
+                              disabled={applyingId === item.id}
+                              onClick={() => handleInsightAction(item)}
+                              className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-sm transition-all cursor-pointer disabled:opacity-60"
                             >
-                              {item.actionText}
+                              {applyingId === item.id ? "Applying..." : item.actionText}
                             </button>
                           )}
                           {(item.actionType === "fix" || item.actionType === "generate" || item.actionType === "create") && (
                             <button
-                              onClick={() => handleApplyInsight(item.id, item.title)}
+                              onClick={() => handleInsightAction(item)}
                               className="bg-white border border-blue-200 text-blue-600 hover:bg-blue-50 font-bold text-xs px-3.5 py-1.5 rounded-xl shadow-sm transition-all cursor-pointer"
                             >
                               {item.actionText}
@@ -908,12 +1018,14 @@ const AiTools: React.FC = () => {
                             </button>
                           )}
 
-                          <button
-                            onClick={() => toast.info(`Viewing details for ${item.title}`)}
-                            className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
-                          >
-                            View Details
-                          </button>
+                          {item.campaignId && (
+                            <button
+                              onClick={() => navigate(`/user-dashboard/campaigns-view-details/${item.campaignId}`)}
+                              className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+                            >
+                              View Details
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -923,15 +1035,18 @@ const AiTools: React.FC = () => {
                 {/* BOTTOM LIST LOAD MORE */}
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-xs text-slate-400 font-medium">
-                    Showing {insightsList.length} of 7 insights
+                    Showing {insightsList.length} of {insightsTotal} insights
                   </span>
 
-                  <button
-                    onClick={() => toast.info("All recommendations loaded.")}
-                    className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-1.5 rounded-xl shadow-sm cursor-pointer transition-all"
-                  >
-                    Load More
-                  </button>
+                  {insightsList.length < insightsTotal && (
+                    <button
+                      disabled={insightsLoading}
+                      onClick={() => fetchInsights(insightsPage + 1)}
+                      className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-1.5 rounded-xl shadow-sm cursor-pointer transition-all disabled:opacity-60"
+                    >
+                      {insightsLoading ? "Loading..." : "Load More"}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -954,10 +1069,7 @@ const AiTools: React.FC = () => {
                     </div>
 
                     <button
-                      onClick={() => {
-                        setAutoOptimization(!autoOptimization);
-                        toast.success(`Auto Optimization turned ${!autoOptimization ? "ON" : "OFF"}`);
-                      }}
+                      onClick={handleToggleAutoOptimization}
                       className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
                         autoOptimization ? "bg-emerald-500" : "bg-slate-200"
                       }`}
@@ -982,7 +1094,7 @@ const AiTools: React.FC = () => {
                     <div className="grid grid-cols-3 gap-2">
                       {/* Conservative */}
                       <div
-                        onClick={() => setOptimizationMode("conservative")}
+                        onClick={() => handleModeChange("conservative")}
                         className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                           optimizationMode === "conservative"
                             ? "bg-blue-50/80 border-2 border-blue-600 text-blue-600 font-bold shadow-sm"
@@ -996,7 +1108,7 @@ const AiTools: React.FC = () => {
 
                       {/* Balanced */}
                       <div
-                        onClick={() => setOptimizationMode("balanced")}
+                        onClick={() => handleModeChange("balanced")}
                         className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                           optimizationMode === "balanced"
                             ? "bg-blue-50/80 border-2 border-blue-600 text-blue-600 font-bold shadow-sm"
@@ -1010,7 +1122,7 @@ const AiTools: React.FC = () => {
 
                       {/* Aggressive */}
                       <div
-                        onClick={() => setOptimizationMode("aggressive")}
+                        onClick={() => handleModeChange("aggressive")}
                         className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center ${
                           optimizationMode === "aggressive"
                             ? "bg-blue-50/80 border-2 border-blue-600 text-blue-600 font-bold shadow-sm"
@@ -1036,7 +1148,7 @@ const AiTools: React.FC = () => {
                     <div className="relative">
                       <select
                         value={optimizationFrequency}
-                        onChange={(e) => setOptimizationFrequency(e.target.value)}
+                        onChange={(e) => handleFrequencyChange(e.target.value)}
                         className="w-full bg-slate-50/60 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 appearance-none focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
                       >
                         <option value="Daily Optimization">Daily Optimization</option>
@@ -1054,15 +1166,15 @@ const AiTools: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <div className="text-base sm:text-lg font-extrabold text-emerald-600">+25%</div>
+                        <div className="text-base sm:text-lg font-extrabold text-emerald-600">{potentialImpact?.conversions ?? "—"}</div>
                         <div className="text-[10px] text-slate-500 font-medium mt-0.5">Conversions</div>
                       </div>
                       <div>
-                        <div className="text-base sm:text-lg font-extrabold text-emerald-600">-15%</div>
+                        <div className="text-base sm:text-lg font-extrabold text-emerald-600">{potentialImpact?.cost_per_result ?? "—"}</div>
                         <div className="text-[10px] text-slate-500 font-medium mt-0.5">Cost per Result</div>
                       </div>
                       <div>
-                        <div className="text-base sm:text-lg font-extrabold text-emerald-600">+18%</div>
+                        <div className="text-base sm:text-lg font-extrabold text-emerald-600">{potentialImpact?.roas ?? "—"}</div>
                         <div className="text-[10px] text-slate-500 font-medium mt-0.5">ROAS</div>
                       </div>
                     </div>
@@ -1081,19 +1193,19 @@ const AiTools: React.FC = () => {
                   {/* Stat Grid */}
                   <div className="grid grid-cols-4 gap-2">
                     <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-3 text-center">
-                      <div className="text-sm font-extrabold text-slate-900">12</div>
+                      <div className="text-sm font-extrabold text-slate-900">{summary?.active_insights ?? 0}</div>
                       <div className="text-[10px] text-slate-400 font-medium mt-0.5">Active insights</div>
                     </div>
                     <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-3 text-center">
-                      <div className="text-sm font-extrabold text-slate-900">5</div>
+                      <div className="text-sm font-extrabold text-slate-900">{summary?.high_priority ?? 0}</div>
                       <div className="text-[10px] text-slate-400 font-medium mt-0.5">High Priority</div>
                     </div>
                     <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-3 text-center">
-                      <div className="text-sm font-extrabold text-slate-900">3</div>
+                      <div className="text-sm font-extrabold text-slate-900">{summary?.applied_today ?? 0}</div>
                       <div className="text-[10px] text-slate-400 font-medium mt-0.5">Applied Today</div>
                     </div>
                     <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-3 text-center">
-                      <div className="text-sm font-extrabold text-slate-900">$243</div>
+                      <div className="text-sm font-extrabold text-slate-900">${(summary?.est_savings ?? 0).toLocaleString()}</div>
                       <div className="text-[10px] text-slate-400 font-medium mt-0.5">Est. Savings</div>
                     </div>
                   </div>
@@ -1116,33 +1228,17 @@ const AiTools: React.FC = () => {
             <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
               <h2 className="text-sm font-bold text-slate-900">Recent Optimization Activity</h2>
               <div className="space-y-3">
-                {[
-                  {
-                    title: "Applied +20% Budget to TikTok Campaign #4",
-                    time: "Today at 08:30 AM",
-                    impact: "Conversions increased by +14%",
-                    status: "Applied",
-                  },
-                  {
-                    title: "Updated Ad Copy Headlines for Google Ads",
-                    time: "Yesterday at 04:15 PM",
-                    impact: "CTR improved by +9%",
-                    status: "Applied",
-                  },
-                  {
-                    title: "Reallocated $15/day from Meta to TikTok",
-                    time: "Aug 16, 2026",
-                    impact: "CPA reduced by -12%",
-                    status: "Applied",
-                  },
-                ].map((item, idx) => (
+                {history.length === 0 && (
+                  <div className="py-8 text-center text-xs text-slate-400 font-medium">No optimization activity yet.</div>
+                )}
+                {history.map((item) => (
                   <div
-                    key={idx}
+                    key={item.id}
                     className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50 flex items-center justify-between gap-4 text-xs"
                   >
                     <div className="space-y-0.5">
                       <div className="font-bold text-slate-800">{item.title}</div>
-                      <div className="text-[11px] text-slate-400 font-medium">{item.time} • {item.impact}</div>
+                      <div className="text-[11px] text-slate-400 font-medium">{formatToLocalDateTime(item.time)} • {item.impact}</div>
                     </div>
 
                     <span className="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1">

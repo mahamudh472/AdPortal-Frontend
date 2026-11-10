@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Link, useParams, useNavigate } from "react-router";
 import api from "@/lib/axios";
 import { formatToLocalDate } from "@/lib/dateUtils";
+import {
+  extractApiError,
+  fetchIntegrationStatuses,
+  getPrelaunchChecks,
+  publishCampaign,
+  type IntegrationStatus,
+} from "@/lib/campaignReview";
 
 interface AdItem {
   ad_name: string;
@@ -59,8 +67,17 @@ const getOrgId = () => {
   }
 };
 
-const Step7Review: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+interface Step7ReviewProps {
+  /** Campaign to review. Defaults to the `:id` route param (update flow). */
+  campaignId?: string;
+  /** Where the "Previous" button goes. Defaults to the update flow's step 6. */
+  previousPath?: string;
+}
+
+const Step7Review: React.FC<Step7ReviewProps> = ({ campaignId, previousPath }) => {
+  const params = useParams<{ id: string }>();
+  const id = campaignId ?? params.id;
+  const [integrations, setIntegrations] = useState<IntegrationStatus[] | null>(null);
   const [campaignData, setCampaignData] = useState<CampaignResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,8 +91,12 @@ const Step7Review: React.FC = () => {
       if (!org_id) { setError("No organization selected"); setLoading(false); return; }
 
       try {
-        const response = await api.get(`/main/campaign/${id}/?org_id=${org_id}`);
+        const [response, integrationStatuses] = await Promise.all([
+          api.get(`/main/campaign/${id}/?org_id=${org_id}`),
+          fetchIntegrationStatuses(org_id),
+        ]);
         setCampaignData(response.data);
+        setIntegrations(integrationStatuses);
       } catch (err) {
         console.error("Error fetching campaign:", err);
         setError("Failed to load campaign data");
@@ -92,23 +113,32 @@ const Step7Review: React.FC = () => {
     return formatToLocalDate(dateString);
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
+    const org_id = getOrgId();
+    if (!id || !org_id) {
+      toast.error("Campaign or organization not found.");
+      return;
+    }
+
     setPublishing(true);
-    
-    // Simulate publishing process
-    setTimeout(() => {
-      // Clear all campaign-related data from localStorage
+    try {
+      await publishCampaign(org_id, id);
+      toast.success("Campaign published successfully!");
+
+      // The builder state is only needed until the campaign is published.
       localStorage.removeItem("campaign_builder_data");
       localStorage.removeItem("campaignId");
       localStorage.removeItem("campaignName");
       localStorage.removeItem("campaignStatus");
       localStorage.removeItem("api_response");
-      
-      console.log("🧹 All campaign data cleared from localStorage");
-      
-      // Navigate to campaigns page
+
       navigate("/user-dashboard/campaigns");
-    }, 1500);
+    } catch (err: any) {
+      console.error("Error publishing campaign:", err);
+      toast.error(extractApiError(err.response?.data, "Failed to publish campaign."));
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -154,6 +184,9 @@ const Step7Review: React.FC = () => {
     );
   }
 
+  const isDraft = campaignData.status?.toUpperCase() === "DRAFT";
+  const checks = getPrelaunchChecks(campaignData, integrations);
+  const allChecksPassed = checks.every((check) => check.passed);
   const audience = campaignData.audience_targeting;
   const ads = campaignData.ads || [];
   const firstAd = ads[0];
@@ -288,15 +321,37 @@ const Step7Review: React.FC = () => {
           </div>
         )}
 
-        <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-          <h3 className="text-sm font-semibold text-green-800 mb-3">Pre-launch Checks</h3>
-          <ul className="space-y-2 text-sm text-green-700">
-            <li className="flex items-center gap-2"><CheckCircle size={16} /> All required fields completed</li>
-            <li className="flex items-center gap-2"><CheckCircle size={16} /> Ad accounts connected and verified</li>
-            <li className="flex items-center gap-2"><CheckCircle size={16} /> Budget allocation confirmed</li>
-            <li className="flex items-center gap-2"><CheckCircle size={16} /> Creative assets meet platform requirements</li>
-          </ul>
-        </div>
+        {isDraft && (
+          <div
+            className={`rounded-xl border p-4 ${
+              allChecksPassed ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"
+            }`}
+          >
+            <h3 className={`text-sm font-semibold mb-3 ${allChecksPassed ? "text-green-800" : "text-red-800"}`}>
+              Pre-launch Checks
+            </h3>
+            <ul className="space-y-2 text-sm">
+              {checks.map((check) => (
+                <li
+                  key={check.key}
+                  className={`flex items-start gap-2 ${check.passed ? "text-green-700" : "text-red-700"}`}
+                >
+                  {check.passed ? (
+                    <CheckCircle size={16} className="mt-0.5 shrink-0" />
+                  ) : (
+                    <XCircle size={16} className="mt-0.5 shrink-0" />
+                  )}
+                  <span>
+                    {check.label}
+                    {!check.passed && check.detail && (
+                      <span className="block text-xs opacity-80">{check.detail}</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
           <div className="flex gap-3">
@@ -310,15 +365,16 @@ const Step7Review: React.FC = () => {
 
         <div className="flex justify-between mt-5">
           <Link
-            to={`/user-dashboard/campaigns-update/${id}/update-step-6`}
+            to={previousPath ?? `/user-dashboard/campaigns-update/${id}/update-step-6`}
             className="btn md:w-40 text-gray-700 border rounded-xl border-gray-700 hover:bg-gray-400 hover:text-white py-2 text-center"
           >
             Previous
           </Link>
-          {campaignData.status?.toUpperCase() === "DRAFT" ? (
+          {isDraft ? (
             <button
               onClick={handlePublish}
-              disabled={publishing}
+              disabled={publishing || !allChecksPassed}
+              title={allChecksPassed ? undefined : "Complete the pre-launch checks first"}
               className="btn md:w-40 text-white bg-blue-600 hover:bg-blue-700 rounded-xl border py-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {publishing ? (

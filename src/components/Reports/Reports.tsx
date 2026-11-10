@@ -18,13 +18,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../lib/axios";
-import { formatToLocalDate } from "@/lib/dateUtils";
+import { formatToLocalDateTime } from "@/lib/dateUtils";
 import type {
   ReportType,
   Platform,
   Metric,
   CreateReportForm,
   ApiReport,
+  ApiScheduledReport,
+  ReportInsights,
   PaginatedReportsResponse,
 } from "@/types/reports";
 
@@ -36,64 +38,10 @@ interface FormattedReportRow {
   dateRange: string;
   format: "XLSX" | "PDF" | "CSV";
   fileUrl: string;
+  status: "PENDING" | "COMPLETED" | "FAILED";
 }
 
-const DEFAULT_MOCK_REPORTS: FormattedReportRow[] = [
-  {
-    id: "r-1",
-    name: "Weekly_report_Mahmud's Ad Service_20260430_20260406.xlsx",
-    type: "Weekly",
-    dateGenerated: "Apr 5, 2026 • 10:30 AM",
-    dateRange: "Apr 1 - Apr 6, 2026",
-    format: "XLSX",
-    fileUrl: "#",
-  },
-  {
-    id: "r-2",
-    name: "Monthly_report_Mahmud's Ad Service_20260430_20260301.xlsx",
-    type: "Monthly",
-    dateGenerated: "Apr 1, 2026 • 09:15 AM",
-    dateRange: "Mar 1 - Mar 31, 2026",
-    format: "XLSX",
-    fileUrl: "#",
-  },
-  {
-    id: "r-3",
-    name: "Custom_report_Performance Overview.pdf",
-    type: "Custom",
-    dateGenerated: "Mar 28, 2026 • 04:45 PM",
-    dateRange: "Mar 1 - Mar 28, 2026",
-    format: "PDF",
-    fileUrl: "#",
-  },
-  {
-    id: "r-4",
-    name: "Monthly_report_Mahmud's Ad Service_20260228_20260201.xlsx",
-    type: "Monthly",
-    dateGenerated: "Mar 1, 2026 • 10:20 AM",
-    dateRange: "Feb 1 - Feb 28, 2026",
-    format: "XLSX",
-    fileUrl: "#",
-  },
-  {
-    id: "r-5",
-    name: "Weekly_report_Mahmud's Ad Service_20260223_20260217.xlsx",
-    type: "Weekly",
-    dateGenerated: "Feb 23, 2026 • 11:05 AM",
-    dateRange: "Feb 17 - Feb 23, 2026",
-    format: "XLSX",
-    fileUrl: "#",
-  },
-  {
-    id: "r-6",
-    name: "Custom_report_Campaign Analysis.pdf",
-    type: "Custom",
-    dateGenerated: "Feb 15, 2026 • 02:30 PM",
-    dateRange: "Feb 1 - Feb 15, 2026",
-    format: "PDF",
-    fileUrl: "#",
-  },
-];
+const PAGE_SIZE = 7;
 
 const getOrgId = (): string | null => {
   const selectedOrg = localStorage.getItem("selectedOrganization");
@@ -129,8 +77,28 @@ const mapReportTypeToAPI = (type: ReportType): string => {
   return map[type] || "weekly";
 };
 
+// start/end dates are plain calendar dates (YYYY-MM-DD) — format them in UTC so they never shift a day.
+const formatCalendarDate = (value: string, withYear: boolean): string =>
+  new Date(`${value}T00:00:00Z`).toLocaleDateString(undefined, {
+    timeZone: "UTC",
+    month: "short",
+    day: "numeric",
+    ...(withYear ? { year: "numeric" } : {}),
+  });
+
+const formatDateRange = (start?: string | null, end?: string | null): string => {
+  if (!start || !end) return "—";
+  const sameYear = start.slice(0, 4) === end.slice(0, 4);
+  return `${formatCalendarDate(start, !sameYear)} - ${formatCalendarDate(end, true)}`;
+};
+
+const formatCompact = (value: number): string =>
+  new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 2 }).format(value);
+
 const transformApiReportToUi = (apiReport: ApiReport): FormattedReportRow => {
-  const isPdf = apiReport.file?.toLowerCase().endsWith(".pdf");
+  const fileName = apiReport.file?.toLowerCase() ?? "";
+  const isPdf = fileName.endsWith(".pdf");
+  const isCsv = fileName.endsWith(".csv");
   const isCustom = apiReport.report_type.toLowerCase() === "custom";
   const isMonthly = apiReport.report_type.toLowerCase() === "monthly";
 
@@ -138,32 +106,32 @@ const transformApiReportToUi = (apiReport: ApiReport): FormattedReportRow => {
     id: String(apiReport.id),
     name: apiReport.name,
     type: isCustom ? "Custom" : isMonthly ? "Monthly" : "Weekly",
-    dateGenerated: formatToLocalDate(apiReport.created_at),
-    dateRange: "Apr 1 - Apr 30, 2026",
-    format: isPdf ? "PDF" : "XLSX",
-    fileUrl: apiReport.file || "#",
+    dateGenerated: formatToLocalDateTime(apiReport.created_at),
+    dateRange: formatDateRange(apiReport.start_date, apiReport.end_date),
+    format: isPdf ? "PDF" : isCsv ? "CSV" : "XLSX",
+    fileUrl: apiReport.file || "",
+    status: apiReport.status ?? "COMPLETED",
   };
 };
 
 const Reports: React.FC = () => {
   const [open, setOpen] = useState<boolean>(false);
   const [generating, setGenerating] = useState<boolean>(false);
-  const [reportsList, setReportsList] = useState<FormattedReportRow[]>(DEFAULT_MOCK_REPORTS);
+  const [reportsList, setReportsList] = useState<FormattedReportRow[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalReports, setTotalReports] = useState<number>(0);
   const [loadingReports, setLoadingReports] = useState<boolean>(false);
   const [dateError, setDateError] = useState<string>("");
 
-  // Search & Filters
+  // Search & Filters (applied server-side)
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedTypeFilter, setSelectedTypeFilter] = useState("All");
 
-  // Scheduled Reports Toggles
-  const [scheduledReports, setScheduledReports] = useState([
-    { id: "s1", title: "Weekly Performance Report", schedule: "Every Monday at 9:00 AM", enabled: true },
-    { id: "s2", title: "Monthly Summary Report", schedule: "1st of every month at 10:00 AM", enabled: true },
-    { id: "s3", title: "Campaign Performance Report", schedule: "15th of every month at 11:00 AM", enabled: true },
-  ]);
+  // Sidebar data
+  const [insights, setInsights] = useState<ReportInsights | null>(null);
+  const [scheduledReports, setScheduledReports] = useState<ApiScheduledReport[]>([]);
 
   const [form, setForm] = useState<CreateReportForm>({
     reportType: "Weekly",
@@ -173,9 +141,25 @@ const Reports: React.FC = () => {
     endDate: "",
   });
 
+  // Debounce the search box so we don't query on every keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Filters changed -> back to the first page.
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, selectedTypeFilter]);
+
   useEffect(() => {
     fetchRecentReports();
-  }, [currentPage]);
+  }, [currentPage, debouncedSearch, selectedTypeFilter]);
+
+  useEffect(() => {
+    fetchInsights();
+    fetchScheduledReports();
+  }, []);
 
   const fetchRecentReports = async (): Promise<void> => {
     const org_id = getOrgId();
@@ -185,19 +169,49 @@ const Reports: React.FC = () => {
 
     setLoadingReports(true);
     try {
-      const response = await api.get<PaginatedReportsResponse>(
-        `/analysis/reports/?org_id=${org_id}&page=${currentPage}&page_size=7`
-      );
+      const params = new URLSearchParams({
+        org_id,
+        page: String(currentPage),
+        page_size: String(PAGE_SIZE),
+      });
+      if (selectedTypeFilter !== "All") params.set("report_type", selectedTypeFilter.toLowerCase());
+      if (debouncedSearch) params.set("search", debouncedSearch);
 
-      if (response.data?.results && response.data.results.length > 0) {
-        const fetched = response.data.results.map(transformApiReportToUi);
-        setReportsList(fetched);
-        setTotalPages(Math.ceil(response.data.count / 7));
-      }
+      const response = await api.get<PaginatedReportsResponse>(`/analysis/reports/?${params.toString()}`);
+
+      setReportsList((response.data?.results ?? []).map(transformApiReportToUi));
+      setTotalReports(response.data?.count ?? 0);
+      setTotalPages(Math.max(1, Math.ceil((response.data?.count ?? 0) / PAGE_SIZE)));
     } catch (error: any) {
       console.error("Error fetching reports:", error);
+      setReportsList([]);
+      setTotalReports(0);
     } finally {
       setLoadingReports(false);
+    }
+  };
+
+  const fetchInsights = async (): Promise<void> => {
+    const org_id = getOrgId();
+    if (!org_id) return;
+    try {
+      const response = await api.get<ReportInsights>(`/analysis/report-insights/?org_id=${org_id}`);
+      setInsights(response.data);
+    } catch (error) {
+      console.error("Error fetching report insights:", error);
+    }
+  };
+
+  const fetchScheduledReports = async (): Promise<void> => {
+    const org_id = getOrgId();
+    if (!org_id) return;
+    try {
+      const response = await api.get<{ results: ApiScheduledReport[] }>(
+        `/analysis/scheduled-reports/?org_id=${org_id}`
+      );
+      setScheduledReports(response.data.results ?? []);
+    } catch (error) {
+      console.error("Error fetching scheduled reports:", error);
     }
   };
 
@@ -269,7 +283,7 @@ const Reports: React.FC = () => {
 
       await api.post(`/analysis/generate-report/?org_id=${org_id}`, payload);
 
-      toast.success("Report generated successfully!");
+      toast.success("Report is being generated. It will appear below shortly.");
       setOpen(false);
       setForm({
         reportType: "Weekly",
@@ -283,7 +297,7 @@ const Reports: React.FC = () => {
       fetchRecentReports();
     } catch (error: any) {
       console.error("Error generating report:", error);
-      toast.error(error.response?.data?.message || "Failed to generate report");
+      toast.error(error.response?.data?.error || error.response?.data?.message || "Failed to generate report");
     } finally {
       setGenerating(false);
     }
@@ -291,8 +305,8 @@ const Reports: React.FC = () => {
 
   const handleDownload = (fileUrl: string, fileName: string): void => {
     try {
-      if (fileUrl === "#") {
-        toast.success(`Started downloading ${fileName}`);
+      if (!fileUrl) {
+        toast.error("This report file is not ready yet");
         return;
       }
       const link = document.createElement("a");
@@ -309,18 +323,31 @@ const Reports: React.FC = () => {
     }
   };
 
-  const handleToggleScheduled = (id: string) => {
-    setScheduledReports((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, enabled: !item.enabled } : item))
-    );
-    toast.success("Scheduled report setting updated");
+  const handleToggleScheduled = async (id: number) => {
+    const org_id = getOrgId();
+    const current = scheduledReports.find((item) => item.id === id);
+    if (!org_id || !current) return;
+
+    const nextEnabled = !current.enabled;
+    // Optimistic update, rolled back if the request fails.
+    setScheduledReports((prev) => prev.map((item) => (item.id === id ? { ...item, enabled: nextEnabled } : item)));
+    try {
+      await api.patch(`/analysis/scheduled-reports/${id}/?org_id=${org_id}`, { enabled: nextEnabled });
+      toast.success("Scheduled report setting updated");
+    } catch (error: any) {
+      setScheduledReports((prev) => prev.map((item) => (item.id === id ? { ...item, enabled: current.enabled } : item)));
+      toast.error(
+        error.response?.status === 403
+          ? "Only owners and admins can change scheduled reports"
+          : "Failed to update scheduled report"
+      );
+    }
   };
 
-  const filteredReports = reportsList.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = selectedTypeFilter === "All" || item.type === selectedTypeFilter;
-    return matchesSearch && matchesType;
-  });
+  // Search and type filter are applied by the API.
+  const filteredReports = reportsList;
+  const rangeStart = totalReports === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = (currentPage - 1) * PAGE_SIZE + filteredReports.length;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 py-3 space-y-6">
@@ -437,10 +464,15 @@ const Reports: React.FC = () => {
                 </div>
 
                 {/* Date Picker Button */}
-                <button className="border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Apr 1, 2026 - Apr 30, 2026</span>
-                </button>
+                {insights && (
+                  <div
+                    className="border border-slate-200 bg-white text-slate-700 font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-sm"
+                    title="Period used for the report insights"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{formatDateRange(insights.period.start_date, insights.period.end_date)}</span>
+                  </div>
+                )}
 
                 {/* Type Filter */}
                 <div className="relative">
@@ -574,7 +606,7 @@ const Reports: React.FC = () => {
             {/* TABLE FOOTER / PAGINATION */}
             <div className="flex items-center justify-between border-t border-slate-100 pt-3">
               <span className="text-xs text-slate-400 font-medium">
-                Showing 1 to {filteredReports.length} of {filteredReports.length} reports
+                Showing {rangeStart} to {rangeEnd} of {totalReports} reports
               </span>
 
               <div className="flex items-center gap-1.5">
@@ -585,8 +617,8 @@ const Reports: React.FC = () => {
                 >
                   &lt; Previous
                 </button>
-                <span className="bg-blue-600 text-white font-bold text-xs w-6 h-6 rounded-lg flex items-center justify-center">
-                  1
+                <span className="bg-blue-600 text-white font-bold text-xs min-w-6 h-6 px-1.5 rounded-lg flex items-center justify-center">
+                  {currentPage}
                 </span>
                 <button
                   disabled={currentPage >= totalPages}
@@ -644,7 +676,14 @@ const Reports: React.FC = () => {
                 <div>
                   <h4 className="font-bold text-slate-900">Top Performing Campaign</h4>
                   <p className="text-slate-500 font-medium mt-0.5 leading-relaxed">
-                    Summer Sale 2024 generated the highest ROAS of <span className="font-bold text-blue-600">4.62x</span>
+                    {insights?.top_campaign ? (
+                      <>
+                        {insights.top_campaign.name} generated the highest ROAS of{" "}
+                        <span className="font-bold text-blue-600">{insights.top_campaign.roas}x</span>
+                      </>
+                    ) : (
+                      "No campaign performance data yet"
+                    )}
                   </p>
                 </div>
               </div>
@@ -657,7 +696,10 @@ const Reports: React.FC = () => {
                 <div>
                   <h4 className="font-bold text-slate-900">Total Spend</h4>
                   <p className="text-slate-500 font-medium mt-0.5 leading-relaxed">
-                    <span className="font-bold text-emerald-600">$11,506.50</span> spent across all campaigns in the selected period
+                    <span className="font-bold text-emerald-600">
+                      ${(insights?.total_spend ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>{" "}
+                    spent across all campaigns in the selected period
                   </p>
                 </div>
               </div>
@@ -670,7 +712,7 @@ const Reports: React.FC = () => {
                 <div>
                   <h4 className="font-bold text-slate-900">Conversion Rate</h4>
                   <p className="text-slate-500 font-medium mt-0.5 leading-relaxed">
-                    <span className="font-bold text-purple-600">2.35%</span> average conversion rate across all campaigns
+                    <span className="font-bold text-purple-600">{insights?.conversion_rate ?? 0}%</span> average conversion rate across all campaigns
                   </p>
                 </div>
               </div>
@@ -683,7 +725,7 @@ const Reports: React.FC = () => {
                 <div>
                   <h4 className="font-bold text-slate-900">Impressions</h4>
                   <p className="text-slate-500 font-medium mt-0.5 leading-relaxed">
-                    <span className="font-bold text-amber-600">2.45M</span> total impressions delivered across all platforms
+                    <span className="font-bold text-amber-600">{formatCompact(insights?.total_impressions ?? 0)}</span> total impressions delivered across all platforms
                   </p>
                 </div>
               </div>
@@ -698,6 +740,9 @@ const Reports: React.FC = () => {
             </div>
 
             <div className="space-y-4">
+              {scheduledReports.length === 0 && (
+                <p className="text-xs text-slate-400 font-medium text-center py-2">No scheduled reports</p>
+              )}
               {scheduledReports.map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-xs gap-3">
                   <div>
@@ -718,22 +763,9 @@ const Reports: React.FC = () => {
                         }`}
                       />
                     </button>
-                    <button className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer">
-                      <MoreVertical className="w-3.5 h-3.5" />
-                    </button>
                   </div>
                 </div>
               ))}
-            </div>
-
-            <div className="pt-2 text-center border-t border-slate-100">
-              <button
-                onClick={() => toast.info("Viewing all scheduled reports")}
-                className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1 mx-auto cursor-pointer transition-colors"
-              >
-                <span>View All Scheduled Reports</span>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
             </div>
           </div>
         </div>

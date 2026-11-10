@@ -471,7 +471,7 @@ const UserDashboard: React.FC = () => {
   const campaignsList = dashboardData?.top_campaigns || [];
   const aiInsights = dashboardData?.ai_insights || [];
   const budgetRec = dashboardData?.budget_recommendation;
-  const dateRangeLabel = dashboardData?.date_range?.label || "May 1 – May 31, 2024";
+  const dateRangeLabel = dashboardData?.date_range?.label || "Select date range";
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 py-3 space-y-6">

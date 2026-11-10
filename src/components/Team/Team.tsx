@@ -32,6 +32,7 @@ import {
 
 import type { TeamMember, InviteForm } from "@/types/team";
 import { clearTeamError, clearTeamMessage } from "@/features/Team/teamSlice";
+import { formatToLocalDateTime } from "@/lib/dateUtils";
 
 // Get current user email from localStorage
 const getCurrentUserEmail = (): string | null => {
@@ -70,24 +71,11 @@ const getOrgId = (): string | null => {
 };
 
 const getInitials = (name: string | undefined | null): string => {
-  if (!name || typeof name !== "string") return "MH";
+  if (!name || typeof name !== "string") return "?";
   const parts = name.trim().split(" ");
-  if (parts.length === 0) return "MH";
+  if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-};
-
-const DEFAULT_MEMBER_FALLBACK: TeamMember = {
-  id: 9991,
-  role: "OWNER",
-  status: "ACTIVE",
-  user: {
-    id: "1",
-    email: "info.mahmud473@gmail.com",
-    full_name: "Md. Mahmud Hasan",
-    phone_number: null,
-    is_admin: true,
-  },
 };
 
 const Team: React.FC = () => {
@@ -256,8 +244,7 @@ const Team: React.FC = () => {
     }
   };
 
-  const displayMembers: TeamMember[] =
-    Array.isArray(members) && members.length > 0 ? members : [DEFAULT_MEMBER_FALLBACK];
+  const displayMembers: TeamMember[] = Array.isArray(members) ? members : [];
 
   const filteredMembers = displayMembers.filter((m) => {
     const name = m.user?.full_name || "";
@@ -506,12 +493,12 @@ const Team: React.FC = () => {
                 </tr>
               ) : (
                 filteredMembers.map((member) => {
-                  const memberName = member.user?.full_name || "Md. Mahmud Hasan";
-                  const memberEmail = member.user?.email || "info.mahmud473@gmail.com";
-                  const memberRole = member.role || "OWNER";
-                  const memberStatus = member.status || "ACTIVE";
+                  const memberName = member.user?.full_name || member.user?.email || "Pending invite";
+                  const memberEmail = member.user?.email || "";
+                  const memberRole = member.role || "MEMBER";
+                  const memberStatus = member.status || "PENDING";
                   const isOwner = memberRole.toUpperCase() === "OWNER";
-                  const isSelf = memberEmail === currentUserEmail || member.id === 9991;
+                  const isSelf = !!memberEmail && memberEmail === currentUserEmail;
 
                   return (
                     <tr key={member.id} className="hover:bg-slate-50/70 transition-colors">
@@ -568,12 +555,12 @@ const Team: React.FC = () => {
 
                       {/* JOINED */}
                       <td className="py-3.5 pr-3 text-slate-600 font-medium whitespace-nowrap">
-                        Apr 20, 2026 • 10:30 AM
+                        {member.joined_at ? formatToLocalDateTime(member.joined_at) : "—"}
                       </td>
 
                       {/* LAST ACTIVE */}
                       <td className="py-3.5 pr-3 text-slate-600 font-medium whitespace-nowrap">
-                        Apr 20, 2026 • 10:30 AM
+                        {member.last_active_at ? formatToLocalDateTime(member.last_active_at) : "—"}
                       </td>
 
                       {/* ACTIONS */}

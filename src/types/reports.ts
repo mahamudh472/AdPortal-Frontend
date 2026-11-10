@@ -23,7 +23,28 @@ export interface ApiReport {
   name: string;
   created_at: string;
   report_type: string;
-  file: string;
+  file: string | null;
+  status?: "PENDING" | "COMPLETED" | "FAILED";
+  start_date?: string | null; // YYYY-MM-DD
+  end_date?: string | null; // YYYY-MM-DD
+  included_platforms?: string[];
+  included_metrics?: string[];
+}
+
+export interface ApiScheduledReport {
+  id: number;
+  title: string;
+  schedule: string;
+  frequency: "weekly" | "monthly";
+  enabled: boolean;
+}
+
+export interface ReportInsights {
+  period: { start_date: string; end_date: string };
+  top_campaign: { name: string; roas: number } | null;
+  total_spend: number;
+  conversion_rate: number;
+  total_impressions: number;
 }
 
 export interface ApiReportResponse {
