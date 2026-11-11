@@ -1,0 +1,18 @@
+node_modules
+dist
+dist-ssr
+.git
+.github
+.vscode
+.idea
+.DS_Store
+
+# Env files must never be baked into the image; pass VITE_* as build args.
+.env
+.env.*
+*.local
+
+Dockerfile
+.dockerignore
+*.log
+*.md
