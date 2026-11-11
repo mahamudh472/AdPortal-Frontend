@@ -426,7 +426,7 @@ export const refreshToken = createAsyncThunk<
     const response = await axios.post<{ access: string; refresh: string }>(
       `${import.meta.env.VITE_API_BASE_URL}/api/v1/accounts/token/refresh/`,
       { refresh: refreshToken },
-      { headers: { "Content-Type": "application/json" } }
+      { headers: { "Content-Type": "application/json", "X-Auth-Mode": "cookie" }, withCredentials: true }
     );
 
     console.log(' Token refreshed successfully');

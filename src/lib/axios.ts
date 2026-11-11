@@ -8,7 +8,10 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL + "/api/v1",
   headers: {
     "Content-Type": "application/json",
+    // Ask the API to keep the refresh token in an HttpOnly cookie (not readable by JS).
+    "X-Auth-Mode": "cookie",
   },
+  withCredentials: true,
 });
 
 
