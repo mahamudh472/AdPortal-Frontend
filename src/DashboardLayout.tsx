@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -24,7 +24,7 @@ const DashboardLayout: React.FC = () => {
           <div className="w-full">
               <AdminNavbar />
            <div className="mt-4 px-2">
-             <Outlet />
+             <Suspense fallback={<div className="flex h-full min-h-[40vh] items-center justify-center text-sm text-slate-500">Loading…</div>}><Outlet /></Suspense>
            </div>
           </div>
 

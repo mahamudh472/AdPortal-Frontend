@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ const UpdateCampaignLayout: React.FC = () => {
 
       
       <div className="flex-1 px-6 py-8">
-        <Outlet />
+        <Suspense fallback={<div className="flex h-full min-h-[40vh] items-center justify-center text-sm text-slate-500">Loading…</div>}><Outlet /></Suspense>
       </div>
 
    

@@ -1,74 +1,75 @@
+import { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Dashboard
-import UserDashboard from "./pages/Dashboard/UserDashboard/UserDashboard/Dashboard";
+const UserDashboard = lazy(() => import("./pages/Dashboard/UserDashboard/UserDashboard/Dashboard"));
 import DashboardLayout from "./DashboardLayout";
 
 // Campaign pages
-import Campaigns from "./pages/Dashboard/UserDashboard/Campaigns/Campaigns";
+const Campaigns = lazy(() => import("./pages/Dashboard/UserDashboard/Campaigns/Campaigns"));
 
 // Create Campaign (NEW)
-import CreateCampaignLayout from "./pages/create-campaign/CreateCampaignLayout";
-import Step2Platforms from "./pages/create-campaign/Step2Platforms";
-import Step3Objective from "./pages/create-campaign/Step3Objective";
-import Step4Audience from "./pages/create-campaign/Step4Audience";
-import Step5Budget from "./pages/create-campaign/Step5Budget";
-import Step6Creative from "./pages/create-campaign/Step6Creative";
-import Step7Review from "./pages/create-campaign/Step7Review";
-import CampaignsViewDetails from "./pages/Dashboard/UserDashboard/Campaigns/campaignsViewDetails/CampaignsViewDetails";
+const CreateCampaignLayout = lazy(() => import("./pages/create-campaign/CreateCampaignLayout"));
+const Step2Platforms = lazy(() => import("./pages/create-campaign/Step2Platforms"));
+const Step3Objective = lazy(() => import("./pages/create-campaign/Step3Objective"));
+const Step4Audience = lazy(() => import("./pages/create-campaign/Step4Audience"));
+const Step5Budget = lazy(() => import("./pages/create-campaign/Step5Budget"));
+const Step6Creative = lazy(() => import("./pages/create-campaign/Step6Creative"));
+const Step7Review = lazy(() => import("./pages/create-campaign/Step7Review"));
+const CampaignsViewDetails = lazy(() => import("./pages/Dashboard/UserDashboard/Campaigns/campaignsViewDetails/CampaignsViewDetails"));
 import Root from "./pages/Root";
-import Home from "./pages/Home/Home";
-import AiTools from "./components/AITools/AiTools";
-import Analytics from "./components/Analytics/Analytics";
-import Reports from "./components/Reports/Reports";
-import Subscriptions from "./components/Analytics/Subscriptions/Subscriptions";
-import Team from "./components/Team/Team";
-import Settings from "./components/Settings/UserSettings";
-import AdminDashboard from "./pages/admin/AdminDashboard/AdminDashboard";
-import UserManagement from "./pages/admin/UserManagement/UserManagement";
-import CampaignMonitoring from "./pages/admin/CampaignMonitoring/CampaignMonitoring";
-import ContentModeration from "./pages/admin/ContentModeration/ContentModeration";
-import Finance from "./pages/admin/Finance/Finance";
-import PlatformAnalytics from "./pages/admin/PlatformAnalytics/PlatformAnalytics";
-import AdminSetting from "./pages/admin/AdminSetting/AdminSetting";
+const Home = lazy(() => import("./pages/Home/Home"));
+const AiTools = lazy(() => import("./components/AITools/AiTools"));
+const Analytics = lazy(() => import("./components/Analytics/Analytics"));
+const Reports = lazy(() => import("./components/Reports/Reports"));
+const Subscriptions = lazy(() => import("./components/Analytics/Subscriptions/Subscriptions"));
+const Team = lazy(() => import("./components/Team/Team"));
+const Settings = lazy(() => import("./components/Settings/UserSettings"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard/AdminDashboard"));
+const UserManagement = lazy(() => import("./pages/admin/UserManagement/UserManagement"));
+const CampaignMonitoring = lazy(() => import("./pages/admin/CampaignMonitoring/CampaignMonitoring"));
+const ContentModeration = lazy(() => import("./pages/admin/ContentModeration/ContentModeration"));
+const Finance = lazy(() => import("./pages/admin/Finance/Finance"));
+const PlatformAnalytics = lazy(() => import("./pages/admin/PlatformAnalytics/PlatformAnalytics"));
+const AdminSetting = lazy(() => import("./pages/admin/AdminSetting/AdminSetting"));
 
-import Location from "./Location/Location";
-import AdminReports from "./pages/admin/AdminReport/AdminReports";
-import SignIn from "./components/Auth/SignIn";
-import SignUp from "./components/Auth/SignUp";
-import ForgetPassword from "./components/Auth/ForgetPassword";
-import CheckEmail from "./components/Auth/CheckEmail";
-import NewPassword from "./components/Auth/NewPassword";
-import HowItWorksPage from "./pages/Home/HowItWorksPage/HowItWorksPage";
-import Pricing from "./pages/Home/Pricing/Pricing";
-import FeaturesPage from "./pages/Home/Features.tsx/FeaturesPage";
+const Location = lazy(() => import("./Location/Location"));
+const AdminReports = lazy(() => import("./pages/admin/AdminReport/AdminReports"));
+const SignIn = lazy(() => import("./components/Auth/SignIn"));
+const SignUp = lazy(() => import("./components/Auth/SignUp"));
+const ForgetPassword = lazy(() => import("./components/Auth/ForgetPassword"));
+const CheckEmail = lazy(() => import("./components/Auth/CheckEmail"));
+const NewPassword = lazy(() => import("./components/Auth/NewPassword"));
+const HowItWorksPage = lazy(() => import("./pages/Home/HowItWorksPage/HowItWorksPage"));
+const Pricing = lazy(() => import("./pages/Home/Pricing/Pricing"));
+const FeaturesPage = lazy(() => import("./pages/Home/Features.tsx/FeaturesPage"));
 import ErrorPage from "./pages/ErrorPage/ErrorPage";
-import Step1CampaignName from "./pages/create-campaign/Step1CampaignName";
-import PrivacyPolicy from "./pages/PrivacyPolicy/PrivacyPolicy";
-import TermsConditions from "./pages/TermsConditions/TermsConditions";
-import SecurityPage from "./pages/SecurityPage/SecurityPage";
-import AboutUs from "./pages/AboutUs/AboutUs";
-import ContactUs from "./pages/Contact/ContactUs";
+const Step1CampaignName = lazy(() => import("./pages/create-campaign/Step1CampaignName"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy/PrivacyPolicy"));
+const TermsConditions = lazy(() => import("./pages/TermsConditions/TermsConditions"));
+const SecurityPage = lazy(() => import("./pages/SecurityPage/SecurityPage"));
+const AboutUs = lazy(() => import("./pages/AboutUs/AboutUs"));
+const ContactUs = lazy(() => import("./pages/Contact/ContactUs"));
 
-import AcceptInvite from "./components/Team/AcceptInvite";
-import UpdateCampaignLayout from "./pages/update-campaign/UpdateCampaignLayout";
-import MetaAuthCallback from "./components/Settings/MetaAuthCallback";
-import GoogleAuthCallback from "./components/Settings/GoogleAuthCallback";
-import TiktokAuthCallback from "./components/Settings/TiktokAuthCallback";
-import UpdateStep1CampaignName from "./pages/update-campaign/UpdateStep1CampaignName";
-import UpdateStep2Platforms from "./pages/update-campaign/UpdateStep2Platforms";
-import UpdateStep3Objective from "./pages/update-campaign/UpdateStep3Objective";
-import UpdateStep5Budget from "./pages/update-campaign/UpdateStep5Budget";
-import UpdateStep6Creative from "./pages/update-campaign/UpdateStep6Creative";
-import UpdateStep4Audience from "./pages/update-campaign/UpdateStep4Audience";
-import UpdateStep7Review from "./pages/update-campaign/UpdateStep7Review";
-import OrganizationManagement from "./pages/admin/Organization/OrganizationManagement";
-import UserNotificationPage from "./Notification/UserNotificationPage";
-import AdminContact from "./pages/Contact/AdminContact";
-import AdminNotificationPage from "./Notification/AdminNotificationPage";
+const AcceptInvite = lazy(() => import("./components/Team/AcceptInvite"));
+const UpdateCampaignLayout = lazy(() => import("./pages/update-campaign/UpdateCampaignLayout"));
+const MetaAuthCallback = lazy(() => import("./components/Settings/MetaAuthCallback"));
+const GoogleAuthCallback = lazy(() => import("./components/Settings/GoogleAuthCallback"));
+const TiktokAuthCallback = lazy(() => import("./components/Settings/TiktokAuthCallback"));
+const UpdateStep1CampaignName = lazy(() => import("./pages/update-campaign/UpdateStep1CampaignName"));
+const UpdateStep2Platforms = lazy(() => import("./pages/update-campaign/UpdateStep2Platforms"));
+const UpdateStep3Objective = lazy(() => import("./pages/update-campaign/UpdateStep3Objective"));
+const UpdateStep5Budget = lazy(() => import("./pages/update-campaign/UpdateStep5Budget"));
+const UpdateStep6Creative = lazy(() => import("./pages/update-campaign/UpdateStep6Creative"));
+const UpdateStep4Audience = lazy(() => import("./pages/update-campaign/UpdateStep4Audience"));
+const UpdateStep7Review = lazy(() => import("./pages/update-campaign/UpdateStep7Review"));
+const OrganizationManagement = lazy(() => import("./pages/admin/Organization/OrganizationManagement"));
+const UserNotificationPage = lazy(() => import("./Notification/UserNotificationPage"));
+const AdminContact = lazy(() => import("./pages/Contact/AdminContact"));
+const AdminNotificationPage = lazy(() => import("./Notification/AdminNotificationPage"));
 
-import Payment from "./components/Payment/Payment";
+const Payment = lazy(() => import("./components/Payment/Payment"));
 
 export const router = createBrowserRouter([
   {

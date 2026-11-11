@@ -1,7 +1,7 @@
 // src/RootWraper.tsx
 import { RouterProvider } from "react-router-dom";
 import { router } from "./Router";
-import { useEffect, useRef, useCallback } from "react";
+import { Suspense, useEffect, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { 
   addNotification, 
@@ -180,5 +180,5 @@ export const RootWraper = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [isAuthenticated, disconnect, connect]);
 
-  return <RouterProvider router={router} />;
+  return <Suspense fallback={null}><RouterProvider router={router} /></Suspense>;
 };
