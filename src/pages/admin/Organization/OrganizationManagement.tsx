@@ -104,7 +104,7 @@ const updateOrganizationStatus = async (
 };
 
 const deleteOrganization = async (snowflakeId: string): Promise<void> => {
-  await api.delete(`/admin/organizations/${snowflakeId}/`);
+  await api.delete(`/admin/organizations/${snowflakeId}/`, { params: { confirm: snowflakeId } });
 };
 
 /* =========================
