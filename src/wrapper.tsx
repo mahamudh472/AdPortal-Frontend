@@ -1,6 +1,7 @@
 // src/RootWraper.tsx
 import { RouterProvider } from "react-router-dom";
 import { router } from "./Router";
+import api from "./lib/axios";
 import { Suspense, useEffect, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { 
@@ -48,7 +49,7 @@ export const RootWraper = () => {
     }
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!isAuthenticated) {
       console.log("User not authenticated, skipping WebSocket connection");
       return;
@@ -62,7 +63,17 @@ export const RootWraper = () => {
       return;
     }
 
-    const wsUrl = `${import.meta.env.VITE_API_BASE_WS_URL}/ws/notifications/?token=${token}`;
+    // Use a short-lived single-use ticket instead of putting the JWT in the URL
+    // (URLs end up in server/proxy logs and browser history).
+    let ticket: string;
+    try {
+      const res = await api.post("/accounts/ws-ticket/");
+      ticket = res.data.ticket;
+    } catch (err) {
+      console.warn("Could not obtain WebSocket ticket", err);
+      return;
+    }
+    const wsUrl = `${import.meta.env.VITE_API_BASE_WS_URL}/ws/notifications/?ticket=${encodeURIComponent(ticket)}`;
     console.log("Attempting WS connect");
 
     try {
