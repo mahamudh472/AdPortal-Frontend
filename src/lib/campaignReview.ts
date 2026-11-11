@@ -58,11 +58,8 @@ export const getPrelaunchChecks = (
     ["audience age", audience?.min_age && audience?.max_age],
     ["audience gender", audience?.gender],
     ["locations", audience?.locations],
-    ["keywords", audience?.keywords],
-    ["ad name", ad?.ad_name],
     ["headline", ad?.headline],
     ["primary text", ad?.primary_text],
-    ["description", ad?.description],
     ["call to action", ad?.call_to_action],
     ["destination URL", ad?.destination_url],
   ]

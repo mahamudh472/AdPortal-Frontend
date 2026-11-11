@@ -9,14 +9,31 @@ interface AudienceInput {
   interests: string;
 }
 
+export type AudienceLevel = "too_specific" | "optimal" | "too_broad";
+
 export interface AudienceReach {
   min: string;
   max: string;
   progress: number;
   loading: boolean;
+  level: AudienceLevel;
+  headline: string;
+  insights: { label: string; ok: boolean }[];
+  interestSuggestions: string[];
+  thresholds: { too_specific_below: number; optimal_min: number; optimal_max: number; too_broad_above: number };
 }
 
-const EMPTY: AudienceReach = { min: "—", max: "—", progress: 0, loading: true };
+const EMPTY: AudienceReach = {
+  min: "—",
+  max: "—",
+  progress: 0,
+  loading: true,
+  level: "optimal",
+  headline: "",
+  insights: [],
+  interestSuggestions: [],
+  thresholds: { too_specific_below: 100_000, optimal_min: 630_000, optimal_max: 960_000, too_broad_above: 2_000_000 },
+};
 
 /** Debounced "estimated reach" lookup for the audience step (POST /main/audience-reach-estimate/). */
 export const useAudienceReach = ({ minAge, maxAge, gender, location, interests }: AudienceInput): AudienceReach => {
@@ -46,13 +63,18 @@ export const useAudienceReach = ({ minAge, maxAge, gender, location, interests }
     setReach((prev) => ({ ...prev, loading: true }));
     const timer = setTimeout(async () => {
       try {
-        const response = await api.post(`/main/audience-reach-estimate/?org_id=${orgId}`, payload);
+        const { data } = await api.post(`/main/audience-reach-estimate/?org_id=${orgId}`, payload);
         if (!cancelled) {
           setReach({
-            min: response.data.min_label,
-            max: response.data.max_label,
-            progress: response.data.progress,
+            min: data.min_label,
+            max: data.max_label,
+            progress: data.progress,
             loading: false,
+            level: data.level,
+            headline: data.headline,
+            insights: data.insights ?? [],
+            interestSuggestions: data.interest_suggestions ?? [],
+            thresholds: data.thresholds ?? EMPTY.thresholds,
           });
         }
       } catch {
