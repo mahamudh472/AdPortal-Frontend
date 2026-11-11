@@ -91,6 +91,11 @@ const Security: React.FC = () => {
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
+      input: "password",
+      inputLabel: "Enter your password to confirm",
+      inputPlaceholder: "Password",
+      inputAttributes: { autocapitalize: "off", autocomplete: "current-password" },
+      inputValidator: (value) => (!value ? "Password is required" : undefined),
       confirmButtonText: "Yes, delete my account",
       cancelButtonText: "Cancel",
       reverseButtons: true,
@@ -102,7 +107,9 @@ const Security: React.FC = () => {
         setDeleteLoading(true);
         
         try {
-          await api.delete("/accounts/delete-account/");
+          await api.delete("/accounts/delete-account/", {
+            data: { password: result.value },
+          });
           
           Swal.fire({
             title: "Account Deleted!",
@@ -120,7 +127,7 @@ const Security: React.FC = () => {
           
           Swal.fire({
             title: "Error",
-            text: error.response?.data?.message || "Failed to delete account. Please try again.",
+            text: error.response?.data?.error || error.response?.data?.message || "Failed to delete account. Please try again.",
             icon: "error",
             confirmButtonColor: "#3085d6",
             background: "#ffffff",
