@@ -591,8 +591,7 @@ const OrganizationManagement: React.FC = () => {
                       {org.website ? (
                         <a
                           href={org.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          target="_blank" rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 text-blue-600 hover:text-blue-700 hover:underline font-bold text-xs"
                         >
                           <Globe size={14} className="text-blue-500" />

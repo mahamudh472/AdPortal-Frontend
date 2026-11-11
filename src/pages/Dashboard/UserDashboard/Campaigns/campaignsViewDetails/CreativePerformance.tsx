@@ -247,8 +247,7 @@ const CreativePerformance: React.FC<CreativePerformanceProps> = ({ campaign }) =
                   {item.destination_url && (
                     <a 
                       href={item.destination_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      target="_blank" rel="noopener noreferrer"
                       className="text-xs text-blue-600 hover:underline truncate block"
                     >
                       {item.destination_url.replace(/^https?:\/\//, '')}
