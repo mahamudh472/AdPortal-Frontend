@@ -176,7 +176,7 @@ export const router = createBrowserRouter([
 
   {
     path: "/user-dashboard",
-    element: <ProtectedRoute><DashboardLayout /></ProtectedRoute>,
+    element: <ProtectedRoute role="user"><DashboardLayout /></ProtectedRoute>,
     children: [
       {
         index: true,
@@ -314,7 +314,7 @@ export const router = createBrowserRouter([
 
   {
     path: "/admin-dashboard",
-    element: <ProtectedRoute><DashboardLayout /></ProtectedRoute>,
+    element: <ProtectedRoute role="admin"><DashboardLayout /></ProtectedRoute>,
     children: [
       {
         index: true,
