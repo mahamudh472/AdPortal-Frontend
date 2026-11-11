@@ -128,8 +128,9 @@ const incrementDownloadCount = async (reportId: number): Promise<IncrementDownlo
 
 const downloadReportFile = async (fileUrl: string, fileName: string) => {
   try {
-    const response = await fetch(fileUrl);
-    const blob = await response.blob();
+    // Admin reports are private: fetch with the auth token.
+    const response = await api.get(fileUrl, { responseType: 'blob' });
+    const blob = response.data as Blob;
     
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');

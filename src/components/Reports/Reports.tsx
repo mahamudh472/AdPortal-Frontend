@@ -303,20 +303,22 @@ const Reports: React.FC = () => {
     }
   };
 
-  const handleDownload = (fileUrl: string, fileName: string): void => {
+  const handleDownload = async (fileUrl: string, fileName: string): Promise<void> => {
     try {
       if (!fileUrl) {
         toast.error("This report file is not ready yet");
         return;
       }
+      // Reports are private: fetch with the auth token, then save the blob.
+      const response = await api.get(fileUrl, { responseType: "blob" });
+      const blobUrl = window.URL.createObjectURL(response.data);
       const link = document.createElement("a");
-      link.href = fileUrl;
+      link.href = blobUrl;
       link.setAttribute("download", fileName);
-      link.setAttribute("target", "_blank");
-      link.setAttribute("rel", "noopener noreferrer");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
       toast.success("Download started!");
     } catch {
       toast.error("Failed to download report");
