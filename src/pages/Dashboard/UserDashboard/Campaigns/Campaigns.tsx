@@ -158,29 +158,6 @@ const Campaigns: React.FC = () => {
     }
   }, [orgId, currentPage, searchTerm, activeFilter]);
 
-  useEffect(() => {
-    if (orgId) fetchStatusCounts();
-  }, [orgId]);
-
-  const fetchStatusCounts = async () => {
-    try {
-      const [allRes, activeRes, pausedRes, draftRes] = await Promise.all([
-        api.get(`/main/campaigns/?org_id=${orgId}&page_size=1`),
-        api.get(`/main/campaigns/?org_id=${orgId}&status=ACTIVE&page_size=1`),
-        api.get(`/main/campaigns/?org_id=${orgId}&status=PAUSED&page_size=1`),
-        api.get(`/main/campaigns/?org_id=${orgId}&status=DRAFT&page_size=1`),
-      ]);
-      setStatusCounts({
-        all: allRes.data.count || 0,
-        active: activeRes.data.count || 0,
-        paused: pausedRes.data.count || 0,
-        draft: draftRes.data.count || 0,
-      });
-    } catch {
-      // counts fail silently
-    }
-  };
-
   const fetchCampaigns = async (page: number = 1, search: string = "", statusFilter: string = "all") => {
     try {
       setLoading(true);
@@ -191,6 +168,15 @@ const Campaigns: React.FC = () => {
       const results = response.data.results || [];
       setCampaigns(results);
       setTotalCount(response.data.count || 0);
+      // Tab badge counts now come with the list response (one query instead of four calls).
+      if (response.data.status_counts) {
+        setStatusCounts({
+          all: response.data.status_counts.all || 0,
+          active: response.data.status_counts.active || 0,
+          paused: response.data.status_counts.paused || 0,
+          draft: response.data.status_counts.draft || 0,
+        });
+      }
       setError(null);
     } catch (err: any) {
       console.error("Error fetching campaigns:", err);
@@ -223,7 +209,6 @@ const Campaigns: React.FC = () => {
         const newPage = remaining === 0 && currentPage > 1 ? currentPage - 1 : currentPage;
         setCurrentPage(newPage);
         if (newPage === currentPage) fetchCampaigns(currentPage, searchTerm, activeFilter);
-        fetchStatusCounts();
         toast.success(`Campaign "${name}" deleted successfully.`);
       } catch (err: any) {
         console.error("Error deleting campaign:", err);
