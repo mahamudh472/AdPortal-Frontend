@@ -163,8 +163,8 @@ export interface PlatformCardData {
   spend: number;
   formatted_spend: string;
   delta: string;
-  change_percent: number;
-  is_positive: boolean;
+  change_percent: number | null;
+  is_positive: boolean | null;
   sub_label: string;
   color: string;
   sparkline: number[];
@@ -176,8 +176,8 @@ export interface OverviewMetricData {
   value: string;
   raw_value: number;
   delta: string;
-  change_percent: number;
-  is_positive: boolean;
+  change_percent: number | null;
+  is_positive: boolean | null;
 }
 
 export interface ChartDataPoint {
@@ -228,6 +228,7 @@ export interface BudgetRecommendationData {
   potential_impact: string;
   progress_percent: number;
   recommended_budget_increase: number;
+  can_apply?: boolean;
 }
 
 export interface DateRangeData {
@@ -250,6 +251,12 @@ export interface DashboardResponse {
   impressions?: number;
   click_rate?: number;
   roas?: number;
+  has_data?: boolean;
+  has_period_data?: boolean;
+  last_synced_at?: string | null;
+  currency?: string;
+  mixed_currencies?: boolean;
+  partial_platforms?: { platform: string; reason: string }[];
 }
 
 // Delete Confirmation Modal
@@ -472,6 +479,11 @@ const UserDashboard: React.FC = () => {
   const aiInsights = dashboardData?.ai_insights || [];
   const budgetRec = dashboardData?.budget_recommendation;
   const dateRangeLabel = dashboardData?.date_range?.label || "Select date range";
+  const hasData = dashboardData?.has_data !== false;
+  const hasPeriodData = dashboardData?.has_period_data !== false;
+  const lastSynced = dashboardData?.last_synced_at
+    ? new Date(dashboardData.last_synced_at).toLocaleString()
+    : null;
 
   return (
     <div className="w-full max-w-[1600px] mx-auto px-4 py-3 space-y-6">
@@ -492,6 +504,7 @@ const UserDashboard: React.FC = () => {
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             Welcome back! Here's your campaign overview and performance summary.
+            {lastSynced && <span className="ml-2 text-slate-400">Last updated {lastSynced}</span>}
           </p>
         </div>
 
@@ -527,6 +540,27 @@ const UserDashboard: React.FC = () => {
         </div>
       </div>
 
+      {!hasData && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-xs text-blue-800">
+          No analytics yet. Connect an ad account or run a sync to see real spend,
+          conversions and AI recommendations here.
+        </div>
+      )}
+
+      {hasData && !hasPeriodData && (
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+          No activity in this date range. Try a wider range or run a sync.
+        </div>
+      )}
+
+      {dashboardData?.mixed_currencies && (
+        <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-xs text-amber-800">
+          This organization reports in multiple currencies. Totals and cards are shown in{" "}
+          {dashboardData?.currency || "the primary currency"} only; switch to an
+          integration that reports in another currency to see it.
+        </div>
+      )}
+
       {/* TOP PLATFORM SPEND CARDS GRID (DYNAMIC FROM BACKEND) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {platformCards.map((card, idx) => (
@@ -542,7 +576,9 @@ const UserDashboard: React.FC = () => {
                 </div>
                 <span
                   className={`font-semibold text-[11px] px-2 py-0.5 rounded-full flex items-center gap-0.5 ${
-                    card.is_positive
+                    card.change_percent == null
+                      ? "bg-slate-50 text-slate-500"
+                      : card.is_positive
                       ? "bg-emerald-50 text-emerald-600"
                       : "bg-red-50 text-red-600"
                   }`}
@@ -590,7 +626,11 @@ const UserDashboard: React.FC = () => {
                   <div className="text-lg font-bold text-slate-900 mt-1">{m.value}</div>
                   <div
                     className={`text-[11px] font-semibold flex items-center gap-0.5 mt-0.5 ${
-                      m.is_positive ? "text-emerald-600" : "text-red-500"
+                      m.change_percent == null
+                        ? "text-slate-400"
+                        : m.is_positive
+                        ? "text-emerald-600"
+                        : "text-red-500"
                     }`}
                   >
                     {m.delta}
@@ -778,6 +818,13 @@ const UserDashboard: React.FC = () => {
 
             {/* Recommendation Cards */}
             <div className="space-y-3.5">
+              {aiInsights.length === 0 && (
+                <p className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-center text-[11px] text-slate-400">
+                  {hasData
+                    ? "No open recommendations right now."
+                    : "Insights appear after your first analytics sync."}
+                </p>
+              )}
               {aiInsights.map((ins, idx) => {
                 const isHigh = ins.impact === "HIGH";
                 const isMedium = ins.impact === "MEDIUM";
@@ -901,10 +948,12 @@ const UserDashboard: React.FC = () => {
               {/* Apply Recommendation Button */}
               <button
                 onClick={handleApplyRecommendation}
-                disabled={applyingBudget}
+                disabled={applyingBudget || budgetRec.can_apply === false}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl transition-all shadow-md disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
               >
-                {applyingBudget ? (
+                {budgetRec.can_apply === false ? (
+                  <span>Add a campaign budget first</span>
+                ) : applyingBudget ? (
                   <>
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     <span>Applying...</span>
