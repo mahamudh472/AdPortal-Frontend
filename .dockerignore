@@ -7,10 +7,11 @@ dist-ssr
 .idea
 .DS_Store
 
-# Env files must never be baked into the image; pass VITE_* as build args.
+# Only .env.production is baked in; Vite reads it at build time.
 .env
 .env.*
 *.local
+!.env.production
 
 Dockerfile
 .dockerignore

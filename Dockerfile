@@ -8,19 +8,15 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund
 
 # ── 2. Build ─────────────────────────────────────────────────────────────────
-# VITE_* values are inlined into the JS bundle at build time, so they must be
-# passed as build args (they are public values; never put secrets here).
+# VITE_* values are read from .env.production, which Vite loads automatically
+# for a production build. They are inlined into the JS bundle (public values;
+# never put secrets here).
 FROM deps AS build
-ARG VITE_API_BASE_URL
-ARG VITE_API_BASE_WS_URL
-ARG VITE_STRIPE_PUBLISHABLE_KEY
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
-    VITE_API_BASE_WS_URL=$VITE_API_BASE_WS_URL \
-    VITE_STRIPE_PUBLISHABLE_KEY=$VITE_STRIPE_PUBLISHABLE_KEY
-
 COPY . .
 # Fail the build rather than ship a bundle that calls the wrong host.
-RUN test -n "$VITE_API_BASE_URL" && test -n "$VITE_API_BASE_WS_URL"
+RUN test -f .env.production \
+    && grep -qE '^VITE_API_BASE_URL=.+' .env.production \
+    && grep -qE '^VITE_API_BASE_WS_URL=.+' .env.production
 RUN NODE_ENV=production npm run build \
  # Pre-compress once so nginx serves .gz files (gzip_static) with zero CPU cost.
  && find dist -type f \( -name '*.js' -o -name '*.css' -o -name '*.html' \
