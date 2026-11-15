@@ -24,6 +24,7 @@ const AiTools = lazy(() => import("./components/AITools/AiTools"));
 const Analytics = lazy(() => import("./components/Analytics/Analytics"));
 const Reports = lazy(() => import("./components/Reports/Reports"));
 const Subscriptions = lazy(() => import("./components/Analytics/Subscriptions/Subscriptions"));
+const BillingFAQ = lazy(() => import("./components/Analytics/Subscriptions/BillingFAQ"));
 const Team = lazy(() => import("./components/Team/Team"));
 const Settings = lazy(() => import("./components/Settings/UserSettings"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard/AdminDashboard"));
@@ -214,6 +215,10 @@ export const router = createBrowserRouter([
       {
         path: "subscriptions",
         element: <Subscriptions />,
+      },
+      {
+        path: "billing-faq",
+        element: <BillingFAQ />,
       },
       {
         path: "team",
