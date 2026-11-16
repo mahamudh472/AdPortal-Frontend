@@ -1,8 +1,4 @@
 import { Link } from "react-router-dom";
-import dashboard from "../../../assets/dashboard.svg"
-import dashboard1 from "../../../assets/dashboard1.svg"
-import dashboard2 from "../../../assets/dashboard2.svg"
-import dashboard3 from "../../../assets/dashboard3.svg"
 
 const PowerfulFeatures = () => {
   return (
@@ -23,7 +19,7 @@ const PowerfulFeatures = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mt-20 ">
           {/* Left Feature */}
           <div>
-            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766437021/Payment_Icon_Container_nuoyvf.png" alt=""  className="mb-5"/>
+            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766437021/Payment_Icon_Container_nuoyvf.png" alt=""  className="mb-5" loading="lazy" decoding="async"/>
 
             <h3 className="text-xl font-bold text-slate-900 mb-4">
               Dashboard
@@ -60,8 +56,12 @@ const PowerfulFeatures = () => {
             <div className="absolute -inset-6 rounded-3xl bg-blue-100/40 blur-3xl"></div>
 
             <img
-              src={dashboard}
+              src="/images/feature-dashboard-v1.webp"
               alt="AdPortal Dashboard"
+              width={656}
+              height={490}
+              loading="lazy"
+              decoding="async"
               className="relative z-10 w-full max-w-3xl rounded-2xl "
             />
           </div>
@@ -81,15 +81,19 @@ const PowerfulFeatures = () => {
             <div className="absolute -inset-6 rounded-3xl bg-blue-100/40 blur-3xl"></div>
 
             <img
-              src={dashboard1}
+              src="/images/feature-campaigns-v1.webp"
               alt="AdPortal Dashboard"
+              width={656}
+              height={490}
+              loading="lazy"
+              decoding="async"
               className="relative z-10 w-full max-w-3xl rounded-2xl "
             />
           </div>
 
 
            <div>
-            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766437610/Payment_Icon_Container_3_zzcnyx.png" alt=""  className="mb-5"/>
+            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766437610/Payment_Icon_Container_3_zzcnyx.png" alt=""  className="mb-5" loading="lazy" decoding="async"/>
 
             <h3 className="text-xl font-bold text-slate-900 mb-4">
               Campaigns
@@ -134,7 +138,7 @@ const PowerfulFeatures = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mt-20 ">
           {/* Left Feature */}
           <div>
-            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766437614/Payment_Icon_Container_2_wsaraa.png" alt=""  className="mb-5"/>
+            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766437614/Payment_Icon_Container_2_wsaraa.png" alt=""  className="mb-5" loading="lazy" decoding="async"/>
 
             <h3 className="text-xl font-bold text-slate-900 mb-4">
               AI Tools
@@ -169,8 +173,12 @@ const PowerfulFeatures = () => {
             <div className="absolute -inset-6 rounded-3xl bg-blue-100/40 blur-3xl"></div>
 
             <img
-              src={dashboard2}
+              src="/images/feature-ai-tools-v1.webp"
               alt="AdPortal Dashboard"
+              width={656}
+              height={490}
+              loading="lazy"
+              decoding="async"
               className="relative z-10 w-full max-w-3xl rounded-2xl "
             />
           </div>
@@ -196,15 +204,19 @@ const PowerfulFeatures = () => {
             <div className="absolute -inset-6 rounded-3xl bg-blue-100/40 blur-3xl"></div>
 
             <img
-              src={dashboard3}
+              src="/images/feature-analytics-v1.webp"
               alt="AdPortal Dashboard"
+              width={656}
+              height={490}
+              loading="lazy"
+              decoding="async"
               className="relative z-10 w-full max-w-3xl rounded-2xl "
             />
           </div>
 
 
            <div>
-            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766437615/Payment_Icon_Container_1_j9p7ww.png" alt=""  className="mb-5"/>
+            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766437615/Payment_Icon_Container_1_j9p7ww.png" alt=""  className="mb-5" loading="lazy" decoding="async"/>
 
             <h3 className="text-xl font-bold text-slate-900 mb-4">
               Analytics

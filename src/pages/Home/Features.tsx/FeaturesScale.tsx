@@ -17,7 +17,7 @@ const FeaturesScale = () => {
           {/* Card 1 */}
           <div className="rounded-2xl border border-blue-200 bg-white p-8 shadow-sm hover:shadow-md transition">
             <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-             <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766436076/Home_1_dcywoa.png" alt="" />
+             <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766436076/Home_1_dcywoa.png" alt="" loading="lazy" decoding="async" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-3">
               Multi-Platform Publishing
@@ -31,7 +31,7 @@ const FeaturesScale = () => {
           {/* Card 2 */}
           <div className="rounded-2xl border border-blue-200 bg-white p-8 shadow-sm hover:shadow-md transition">
             <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766436076/Home_2_mjyila.png" alt="" />
+            <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766436076/Home_2_mjyila.png" alt="" loading="lazy" decoding="async" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-3">
               AI Copywriter & Creative
@@ -45,7 +45,7 @@ const FeaturesScale = () => {
           {/* Card 3 */}
           <div className="rounded-2xl border border-blue-200 bg-white p-8 shadow-sm hover:shadow-md transition">
             <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-              <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766436076/Home_3_ifls2r.png" alt="" />
+              <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766436076/Home_3_ifls2r.png" alt="" loading="lazy" decoding="async" />
             </div>
             <h3 className="text-lg font-bold text-slate-900 mb-3">
               Unified Analytics

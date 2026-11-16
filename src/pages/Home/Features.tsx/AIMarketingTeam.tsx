@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import marketing from "../../../assets/marketing.svg"
 
 const AIMarketingTeam = () => {
   return (
@@ -30,7 +29,7 @@ const AIMarketingTeam = () => {
               ].map((item, index) => (
                 <li key={index} className="flex items-start gap-3">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-white text-sm">
-                    <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766436649/Vector_5_cjcwor.png" alt="" />
+                    <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766436649/Vector_5_cjcwor.png" alt="" loading="lazy" decoding="async" />
 
                    
                   </span>
@@ -46,7 +45,7 @@ const AIMarketingTeam = () => {
                 className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 transition"
               >
                 Try AI Features Now 
-                <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766429385/Icon_22_btqo8m.png" alt="" />
+                <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766429385/Icon_22_btqo8m.png" alt="" loading="lazy" decoding="async" />
               </Link>
             </div>
           </div>
@@ -57,8 +56,12 @@ const AIMarketingTeam = () => {
             <div className="absolute -inset-8 rounded-3xl bg-blue-500/20 blur-3xl"></div>
 
             <img
-              src={marketing}
+              src="/images/ai-marketing-team-v1.webp"
               alt="AI Dashboard"
+              width={745}
+              height={570}
+              loading="lazy"
+              decoding="async"
               className="relative z-10 w-full max-w-2xl rounded-2xl "
             />
           </div>

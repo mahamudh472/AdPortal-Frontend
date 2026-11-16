@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import bannerImg from "../../../assets/bannerImg.svg"
 import { toast } from "sonner";
 
 
@@ -89,10 +88,14 @@ const CreateOnes = () => {
             {/* Background Glow */}
             <div className="absolute -inset-6 rounded-3xl bg-gradient-to-tr from-blue-100 to-transparent blur-3xl"></div>
 
-            {/* Dashboard Image */}
+            {/* Dashboard Image (LCP element: eager + high priority, stable public URL) */}
             <img
-              src={bannerImg}
+              src="/images/hero-v1.webp"
               alt="AdPortal Dashboard"
+              width={491}
+              height={548}
+              fetchPriority="high"
+              decoding="async"
               className="relative z-10 w-full max-w-xl rounded-2xl mb-10 "
             />
           </div>

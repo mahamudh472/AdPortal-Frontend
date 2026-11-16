@@ -11,6 +11,8 @@ const HowItWorks = () => {
               src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766437895/Image_8_cen8bi.png"
               alt="How it works"
               className=""
+              loading="lazy"
+              decoding="async"
             />
           </div>
 
@@ -21,7 +23,7 @@ const HowItWorks = () => {
             
               
               <div>
-                <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766438043/Frame_1000003616_lixrhk.png" alt="" />
+                <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766438043/Frame_1000003616_lixrhk.png" alt="" loading="lazy" decoding="async" />
                 <h3 className="text-lg font-bold text-slate-900">
                  1. Connect Accounts
                 </h3>
@@ -36,7 +38,7 @@ const HowItWorks = () => {
               
               <div>
 
-                <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766438128/Frame_1000003616_1_k5bgo3.png" alt="" />
+                <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766438128/Frame_1000003616_1_k5bgo3.png" alt="" loading="lazy" decoding="async" />
                 <h3 className="text-lg font-bold text-slate-900">
                  2. Create & Optimize
                 </h3>
@@ -52,7 +54,7 @@ const HowItWorks = () => {
           
               <div>
 
-                <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766438127/Frame_1000003616_2_uukplv.png" alt="" />
+                <img src="https://res.cloudinary.com/dqkczdjjs/image/upload/v1766438127/Frame_1000003616_2_uukplv.png" alt="" loading="lazy" decoding="async" />
                 <h3 className="text-lg font-bold text-slate-900">
                  3. Track & Grow
                 </h3>

@@ -23,6 +23,12 @@ const mapServerToNotif = (payload: any) => {
   };
 };
 
+const RouteFallback = () => (
+  <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
+    Loading…
+  </div>
+);
+
 export const RootWraper = () => {
   const ws = useRef<WebSocket | null>(null);
   const dispatch = useDispatch();
@@ -191,5 +197,5 @@ export const RootWraper = () => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [isAuthenticated, disconnect, connect]);
 
-  return <Suspense fallback={null}><RouterProvider router={router} /></Suspense>;
+  return <Suspense fallback={<RouteFallback />}><RouterProvider router={router} /></Suspense>;
 };

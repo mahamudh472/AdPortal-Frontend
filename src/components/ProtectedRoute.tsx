@@ -15,7 +15,13 @@ interface ProtectedRouteProps {
  */
 const RoleGate: React.FC<{ role: "admin" | "user"; children: React.ReactNode }> = ({ role, children }) => {
   const { loading, is_admin } = useUserProfile();
-  if (loading) return null;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-slate-500">
+        Loading…
+      </div>
+    );
+  }
   if (role === "admin" && !is_admin) return <Navigate to="/user-dashboard" replace />;
   if (role === "user" && is_admin) return <Navigate to="/admin-dashboard" replace />;
   return <>{children}</>;
